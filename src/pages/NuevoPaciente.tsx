@@ -38,6 +38,15 @@ function NuevoPaciente() {
         parentesco?: string;
         telefono?: string;
         email?: string;
+        fechaConsulta?: string;
+        peso?: string;
+        talla?: string;
+        perimetroBraquial?: string;
+        perimetroCefalico?: string;
+        cintura?: string;
+        abdomen?: string;
+        cadera?: string;
+        pantorrilla?: string;
     }>({});
 
     const validarSeccionPaciente = () => {
@@ -129,10 +138,60 @@ function NuevoPaciente() {
         return nuevosErrores;
     }
 
+    const validarSeccionMediciones = () => {
+        const nuevosErrores: typeof errores = {};
+
+        if (!fechaConsulta) {
+            nuevosErrores.fechaConsulta = "La fecha de consulta es obligatoria";
+        } else {
+            const hoy = new Date().toISOString().split("T")[0];
+
+            if (fechaConsulta > hoy) {
+                nuevosErrores.fechaConsulta = "La fecha no puede ser futura";
+            } else if (fechaNacimiento && fechaConsulta < fechaNacimiento) {
+                nuevosErrores.fechaConsulta = "La fecha no puede ser anterior al nacimiento";
+            }
+        }
+
+        const validarNumPositivo = (valor: string, nombre: string, obligatorio: boolean) => {
+            if (!valor.trim()) {
+                return obligatorio ? `${nombre} es obligatorio` : undefined;
+            }
+
+            const num = Number(valor);
+
+            if (isNaN(num) || num <= 0) {
+                return `${nombre} debe ser mayor a 0`;
+            }
+
+            return undefined;
+        }
+
+        nuevosErrores.peso = validarNumPositivo(peso, "El peso", true);
+        nuevosErrores.talla = validarNumPositivo(talla, "La talla", true);
+        nuevosErrores.perimetroBraquial = validarNumPositivo(perimetroBraquial, "El perimetro braquial", true);
+        
+        nuevosErrores.perimetroCefalico = validarNumPositivo(perimetroCefalico, "El perimetro cefálico", false);
+        nuevosErrores.cintura = validarNumPositivo(cintura, "La cintura", false);
+        nuevosErrores.abdomen = validarNumPositivo(abdomen, "El abdomen", false);
+        nuevosErrores.cadera = validarNumPositivo(cadera, "La cadera", false);
+        nuevosErrores.pantorrilla = validarNumPositivo(pantorrilla, "La pantorrilla", false);
+
+        Object.keys(nuevosErrores).forEach((key) => {
+            if (nuevosErrores[key as keyof typeof errores] === undefined) {
+                delete nuevosErrores[key as keyof typeof errores];
+            }
+        });
+
+        return nuevosErrores;
+    }
+
     const handleGuardar = () => {
         const erroresPaciente = validarSeccionPaciente();
         const erroresContacto = validarSeccionContacto();
-        const todosLosErrores = {...erroresPaciente, ...erroresContacto};
+        const erroresMediciones = validarSeccionMediciones();
+
+        const todosLosErrores = { ...erroresPaciente, ...erroresContacto, ...erroresMediciones };
 
         setErrores(todosLosErrores);
 
@@ -411,35 +470,64 @@ function NuevoPaciente() {
                         <input 
                             type="date"
                             value={fechaConsulta}
-                            onChange={(e) => setFechaConsulta(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            onChange={(e) => {
+                                setFechaConsulta(e.target.value);
+
+                                if(errores.fechaConsulta) setErrores({ ...errores, fechaConsulta: undefined });
+                            }}
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.fechaConsulta ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500"  }`}
                         />
+                        {errores.fechaConsulta && (
+                            <p className="text-xs text-red-500 mt-1">{errores.fechaConsulta}</p>
+                        )}
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Peso (kg) <span className="text-red-500">*</span></label>
 
                         <input 
-                            type="number"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             value={peso}
-                            onChange={(e) => setPeso(e.target.value)}
+                            onChange={(e) => {
+                                const valor = e.target.value;
+
+                                if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                    setPeso(valor);
+
+                                    if (errores.peso) setErrores({ ...errores, peso: undefined });
+                                }
+                            }}
                             placeholder="0.00"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.peso ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.peso && (
+                            <p className="text-xs text-red-500 mt-1">{errores.peso}</p>
+                        )}
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Talla (cm) <span className="text-red-500">*</span></label>
 
                         <input 
-                            type="number"
-                            step="0.1"
+                            type="text"
+                            inputMode="decimal"
                             value={talla}
-                            onChange={(e) => setTalla(e.target.value)}
+                            onChange={(e) => {
+                                const valor = e.target.value;
+
+                                if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                    setTalla(valor);
+
+                                    if (errores.talla) setErrores({ ...errores, talla: undefined });
+                                }
+                            }}
                             placeholder="0.0"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.talla ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.talla && (
+                            <p className="text-xs text-red-500 mt-1">{errores.talla}</p>
+                        )}
                     </div>
                 </div>
 
@@ -448,13 +536,24 @@ function NuevoPaciente() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Perímetro braquial (cm) <span className="text-red-500">*</span></label>
 
                         <input 
-                            type="number"
-                            step="0.1"
+                            type="text"
+                            inputMode="decimal"
                             value={perimetroBraquial}
-                            onChange={(e) => setPerimetroBraquial(e.target.value)}
+                            onChange={(e) => {
+                                const valor = e.target.value;
+
+                                if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                    setPerimetroBraquial(valor);
+
+                                    if (errores.perimetroBraquial) setErrores({ ...errores, perimetroBraquial: undefined });
+                                }
+                            }}
                             placeholder="0.0"
-                            className="w-full max-w-xs px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            className={`w-full max-w-xs px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.perimetroBraquial ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.perimetroBraquial && (
+                            <p className="text-xs text-red-500 mt-1">{errores.perimetroBraquial}</p>
+                        )}
                     </div>
                 </div>
 
@@ -474,26 +573,48 @@ function NuevoPaciente() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Perímetro Cefálico (cm)</label>
 
                                 <input 
-                                    type="number"
-                                    step="0.1"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={perimetroCefalico}
-                                    onChange={(e) => setPerimetroCefalico(e.target.value)}
+                                    onChange={(e) => {
+                                        const valor = e.target.value;
+
+                                        if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                            setPerimetroCefalico(valor);
+        
+                                            if (errores.perimetroCefalico) setErrores({ ...errores, perimetroCefalico: undefined });
+                                        }
+                                    }}
                                     placeholder="0.0"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                                    className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${errores.perimetroCefalico ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500"}`}
                                 />
+                                {errores.perimetroCefalico && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.perimetroCefalico}</p>
+                                )}
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Cintura (cm)</label>
 
                                 <input 
-                                    type="number"
-                                    step="0.1"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={cintura}
-                                    onChange={(e) => setCintura(e.target.value)}
+                                    onChange={(e) => {
+                                        const valor = e.target.value;
+
+                                        if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                            setCintura(valor);
+        
+                                            if (errores.cintura) setErrores({ ...errores, cintura: undefined });
+                                        }
+                                    }}
                                     placeholder="0.0"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                                    className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${errores.cintura ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500"}`}
                                 />
+                                {errores.cintura && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.cintura}</p>
+                                )}
                             </div>
                         </div>
 
@@ -502,39 +623,72 @@ function NuevoPaciente() {
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Abdomen (cm)</label>
 
                                 <input 
-                                    type="number"
-                                    step="0.1"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={abdomen}
-                                    onChange={(e) => setAbdomen(e.target.value)}
+                                    onChange={(e) => {
+                                        const valor = e.target.value;
+
+                                        if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                            setAbdomen(valor);
+        
+                                            if (errores.abdomen) setErrores({ ...errores, abdomen: undefined });
+                                        }
+                                    }}
                                     placeholder="0.0"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                                    className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${errores.abdomen ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500"}`}
                                 />
+                                {errores.abdomen && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.abdomen}</p>
+                                )}
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Cadera (cm)</label>
 
                                 <input 
-                                    type="number"
-                                    step="0.1"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={cadera}
-                                    onChange={(e) => setCadera(e.target.value)}
+                                    onChange={(e) => {
+                                        const valor = e.target.value;
+
+                                        if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                            setCadera(valor);
+        
+                                            if (errores.cadera) setErrores({ ...errores, cadera: undefined });
+                                        }
+                                    }}
                                     placeholder="0.0"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                                    className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${errores.cadera ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500"}`}
                                 />
+                                {errores.cadera && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.cadera}</p>
+                                )}
                             </div>
 
                             <div>
                                 <label className="block text-sm font-medium text-gray-700 mb-1">Pantorrilla (cm)</label>
 
                                 <input 
-                                    type="number"
-                                    step="0.1"
+                                    type="text"
+                                    inputMode="decimal"
                                     value={pantorrilla}
-                                    onChange={(e) => setPantorrilla(e.target.value)}
+                                    onChange={(e) => {
+                                        const valor = e.target.value;
+
+                                        if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                            setPantorrilla(valor);
+        
+                                            if (errores.pantorrilla) setErrores({ ...errores, pantorrilla: undefined });
+                                        }
+                                    }}
                                     placeholder="0.0"
-                                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                                    className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${errores.pantorrilla ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500"}`}
                                 />
+                                {errores.pantorrilla && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.pantorrilla}</p>
+                                )}
                             </div>
                         </div>
                     </div>
