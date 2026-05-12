@@ -1,5 +1,4 @@
-import { error } from "console";
-import { use, useState } from "react";
+import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
 function NuevoPaciente() {
@@ -35,6 +34,10 @@ function NuevoPaciente() {
         sexo?: string;
         pesoNacer?: string;
         tallaNacer?: string;
+        contactoNombre?: string;
+        parentesco?: string;
+        telefono?: string;
+        email?: string;
     }>({});
 
     const validarSeccionPaciente = () => {
@@ -92,11 +95,48 @@ function NuevoPaciente() {
         return nuevosErrores;
     }
 
+    const validarSeccionContacto = () => {
+        const nuevosErrores: typeof errores = {};
+
+        if (!contactoNombre.trim()) {
+            nuevosErrores.contactoNombre = "El nombre del familiar es obligatorio";
+        } else if (contactoNombre.trim().length < 2) {
+            nuevosErrores.contactoNombre = "El nombre debe tener al menos 2 caracteres";
+        } else if (contactoNombre.length > 100) {
+            nuevosErrores.contactoNombre = "El nombre no puede exceder 100 caracteres";
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(contactoNombre)) {
+            nuevosErrores.contactoNombre = "El nombre solo puede contener letras y espacios";
+        }
+
+        if(!parentesco) {
+            nuevosErrores.parentesco = "Selecciona el parentesco";
+        }
+
+        if(!telefono.trim()) {
+            nuevosErrores.telefono = "El telefono es obligatorio";
+        } else if (!/^\d{10}$/.test(telefono)) {
+            nuevosErrores.telefono = "El teléfono debe tener 10 dígitos";
+        }
+
+        if(!email.trim()) {
+            nuevosErrores.email = "El email es obligatorio";
+        } else if (email.length > 100) {
+            nuevosErrores.email = "El email no puede exceder 100 caracteres";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            nuevosErrores.email = "Ingresa un email válido";
+        }
+
+        return nuevosErrores;
+    }
+
     const handleGuardar = () => {
         const erroresPaciente = validarSeccionPaciente();
-        setErrores(erroresPaciente);
+        const erroresContacto = validarSeccionContacto();
+        const todosLosErrores = {...erroresPaciente, ...erroresContacto};
 
-        if (Object.keys(erroresPaciente).length === 0) {
+        setErrores(todosLosErrores);
+
+        if (Object.keys(todosLosErrores).length === 0) {
             alert("Paciente guardado! :) (simulación)");
             navigate("/pacientes");
         }
@@ -263,10 +303,17 @@ function NuevoPaciente() {
                         <input 
                             type="text" 
                             value={contactoNombre}
-                            onChange={(e) => setContactoNombre(e.target.value)}
+                            onChange={(e) => {
+                                setContactoNombre(e.target.value);
+
+                                if (errores.contactoNombre) setErrores({ ...errores, contactoNombre: undefined });
+                            }}
                             placeholder="Ej. Christian Uriel Diaz Ascencio"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.contactoNombre ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.contactoNombre && (
+                            <p className="text-xs text-red-500 mt-1">{errores.contactoNombre}</p>
+                        )}
                     </div>
 
                     <div>
@@ -274,14 +321,21 @@ function NuevoPaciente() {
 
                         <select 
                             value={parentesco}
-                            onChange={(e) => setParentesco(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400 bg-white"
+                            onChange={(e) => {
+                                setParentesco(e.target.value);
+
+                                if (errores.parentesco) setErrores({ ...errores, parentesco: undefined });
+                            }}
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none bg-white ${ errores.parentesco ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         >
                             <option value="">Seleccionar...</option>
                             <option value="Madre">Madre</option>
                             <option value="Padre">Padre</option>
                             <option value="Tutor">Tutor</option>
                         </select>
+                        {errores.parentesco && (
+                            <p className="text-xs text-red-500 mt-1">{errores.parentesco}</p>
+                        )}
                     </div>
                 </div>
 
@@ -290,24 +344,49 @@ function NuevoPaciente() {
                         <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono <span className="text-red-500">*</span></label>
 
                         <input 
-                            type="tel"
-                            value={telefono}
-                            onChange={(e) => setTelefono(e.target.value)}
+                            type="text"
+                            inputMode="numeric"
+                            value={
+                                telefono.length <= 2
+                                    ? telefono
+                                    : telefono.length <= 6
+                                    ? `${telefono.slice(0, 2)} ${telefono.slice(2)}`
+                                    : `${telefono.slice(0, 2)} ${telefono.slice(2, 6)} ${telefono.slice(6)}`
+                            }
+                            onChange={(e) => {
+                                const valor = e.target.value.replace(/\s/g, "");
+
+                                if (valor === "" || (/^\d+$/.test(valor) && valor.length <= 10)) {
+                                    setTelefono(valor);
+                                    
+                                    if (errores.telefono) setErrores({ ...errores, telefono: undefined });
+                                }
+                            }}
                             placeholder="33 1234 5678"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.telefono ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.telefono && (
+                            <p className="text-xs text-red-500 mt-1">{errores.telefono}</p>
+                        )}
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Email <span className="text-red-500">*</span></label>
 
                         <input 
                             type="email"
                             value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            onChange={(e) => {
+                                setEmail(e.target.value);
+
+                                if (errores.email) setErrores({ ...errores, email: undefined })
+                            }}
                             placeholder="correo@ejemplo.com"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.email ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.email && (
+                            <p className="text-xs text-red-500 mt-1">{errores.email}</p>
+                        )}
                     </div>
                 </div>
             </div>
