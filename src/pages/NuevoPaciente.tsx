@@ -1,3 +1,4 @@
+import { error } from "console";
 import { use, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 
@@ -28,9 +29,77 @@ function NuevoPaciente() {
     const [cadera, setCadera] = useState("");
     const [pantorrilla, setPantorrilla] = useState("");
 
+    const [errores, setErrores] = useState<{
+        nombre?: string;
+        fechaNacimiento?: string;
+        sexo?: string;
+        pesoNacer?: string;
+        tallaNacer?: string;
+    }>({});
+
+    const validarSeccionPaciente = () => {
+        const nuevosErrores: typeof errores = {};
+
+        if(!nombre.trim()) {
+            nuevosErrores.nombre = "El nombre es obligatorio";
+        } else if (nombre.trim().length < 2) {
+            nuevosErrores.nombre = "El nombre debe tener al menos 2 carácteres";
+        } else if (nombre.length > 100) {
+            nuevosErrores.nombre = "El nombre no puede exceder 100 caracteres";
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(nombre)) {
+            nuevosErrores.nombre = "El nombre solo puede contener letras y espacios";
+        }
+
+        if(!fechaNacimiento) {
+            nuevosErrores.fechaNacimiento = "La fecha de nacimiento es obligatoria";
+        } else {
+            const hoy = new Date();
+            const fechaNac = new Date(fechaNacimiento);
+            const hace18Anios = new Date();
+            hace18Anios.setFullYear(hoy.getFullYear() - 18);
+
+            if (fechaNac > hoy) {
+                nuevosErrores.fechaNacimiento = "La fecha no puede ser futura";
+            } else if (fechaNac < hace18Anios) {
+                nuevosErrores.fechaNacimiento = "El paciente debe tener menos de 18 años";
+            }
+        }
+
+        if (!sexo) {
+            nuevosErrores.sexo = "Selecciona el género";
+        }
+
+        if (!pesoNacer.trim()) {
+            nuevosErrores.pesoNacer = "El peso al nacer es obligatorio";
+        } else {
+            const num = Number(pesoNacer);
+
+            if (isNaN(num) || num <= 0) {
+                nuevosErrores.pesoNacer = "El peso debe ser mayor a 0";
+            }
+        }
+
+        if (!tallaNacer.trim()) {
+            nuevosErrores.tallaNacer = "La talla al nacer es obligatoria";
+        } else {
+            const num = Number(tallaNacer);
+
+            if (isNaN(num) || num <= 0) {
+                nuevosErrores.tallaNacer = "La talla debe ser mayor a 0";
+            }
+        }
+
+        return nuevosErrores;
+    }
+
     const handleGuardar = () => {
-        alert("Paciente guardado! :) (simulación)");
-        navigate("/pacientes");
+        const erroresPaciente = validarSeccionPaciente();
+        setErrores(erroresPaciente);
+
+        if (Object.keys(erroresPaciente).length === 0) {
+            alert("Paciente guardado! :) (simulación)");
+            navigate("/pacientes");
+        }
     };
 
     return(
@@ -63,10 +132,17 @@ function NuevoPaciente() {
                         <input 
                             type="text" 
                             value={nombre}
-                            onChange={(e) => setNombre(e.target.value)} 
+                            onChange={(e) => {
+                                setNombre(e.target.value);
+
+                                if (errores.nombre) setErrores({...errores, nombre: undefined});
+                            }}
                             placeholder="Jose Alberto Gonzalez Ochoa"
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.nombre ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.nombre && (
+                            <p className="text-xs text-red-500 mt-1">{errores.nombre}</p>
+                        )}
                     </div>
 
                     <div>
@@ -75,16 +151,27 @@ function NuevoPaciente() {
                         <div className="flex gap-2">
                             <button
                                 type="button"
-                                onClick={() => setSexo("M")}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium border ${sexo === "M" ? "bg-teal-600 text-white border-teal-600" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
+                                onClick={() => {
+                                    setSexo("M")
+
+                                    if (errores.sexo) setErrores({ ...errores, sexo: undefined });
+                                }}
+                                className={`flex-1 py-2 rounded-lg text-sm font-medium border ${sexo === "M" ? "bg-teal-600 text-white border-teal-600" : errores.sexo ? "bg-white text-gray-600 border-red-400" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
                             >Masculino</button>
 
                             <button
                                 type="button"
-                                onClick={() => setSexo("F")}
-                                className={`flex-1 py-2 rounded-lg text-sm font-medium border ${sexo === "F" ? "bg-pink-600 text-white border-pink-500" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
+                                onClick={() => {
+                                    setSexo("F");
+
+                                    if (errores.sexo) setErrores({ ...errores, sexo: undefined });
+                                }}
+                                className={`flex-1 py-2 rounded-lg text-sm font-medium border ${sexo === "F" ? "bg-pink-600 text-white border-pink-500" : errores.sexo ? "bg-white text-gray-600 border-red-400" : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"}`}
                             >Femenino</button>
                         </div>
+                        {errores.sexo && (
+                            <p className="text-xs text-red-500 mt-1">{errores.sexo}</p>
+                        )}
                     </div>
                 </div>
 
@@ -95,35 +182,64 @@ function NuevoPaciente() {
                         <input 
                             type="date"
                             value={fechaNacimiento}
-                            onChange={(e) => setFechaNacimiento(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            onChange={(e) => {
+                                setFechaNacimiento(e.target.value);
+
+                                if (errores.fechaNacimiento) setErrores({ ...errores, fechaNacimiento: undefined });
+                            }}
+                            className={`w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400 ${ errores.fechaNacimiento ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.fechaNacimiento && (
+                            <p className="text-xs text-red-500 mt-1">{errores.fechaNacimiento}</p>
+                        )}
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Peso al nacer (kg)</label>
 
                         <input 
-                            type="number"
-                            step="0.01"
+                            type="text"
+                            inputMode="decimal"
                             value={pesoNacer}
                             placeholder="0.00"
-                            onChange={(e) => setPesoNacer(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            onChange={(e) => {
+                                const valor = e.target.value;
+
+                                if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                    setPesoNacer(valor);
+
+                                    if(errores.pesoNacer) setErrores({ ...errores, pesoNacer: undefined});
+                                }
+                            }}
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.pesoNacer ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.pesoNacer && (
+                            <p className="text-xs text-red-500 mt-1">{errores.pesoNacer}</p>
+                        )}
                     </div>
 
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Talla al nacer (cm)</label>
 
                         <input 
-                            type="number"
-                            step="0.1"
+                            type="text"
+                            inputMode="decimal"
                             value={tallaNacer}
                             placeholder="0.0"
-                            onChange={(e) => setTallaNacer(e.target.value)}
-                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-400"
+                            onChange={(e) => {
+                                const valor = e.target.value;
+
+                                if (valor === "" || /^(0|[1-9]\d*)?(\.\d*)?$/.test(valor)) {
+                                    setTallaNacer(valor);
+
+                                    if(errores.tallaNacer) setErrores({ ...errores, tallaNacer: undefined});
+                                }
+                            }}
+                            className={`w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ errores.tallaNacer ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`}
                         />
+                        {errores.tallaNacer && (
+                            <p className="text-xs text-red-500 mt-1">{errores.tallaNacer}</p>
+                        )}
                     </div>
                 </div>
             </div>
