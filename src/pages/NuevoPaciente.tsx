@@ -44,6 +44,16 @@ function NuevoPaciente() {
     const [tipoAlimentacion, setTipoAlimentacion] = useState("");
     const [inicioComplementaria, setInicioComplementaria] = useState("");
 
+    // Antecedentos Heredofamiliares (Paso 1)
+    const [antecedentesFamiliares, setAntecedentesFamiliares] = useState({
+        diabetes: false,
+        hipertension: false,
+        obesidad: false,
+        cardiovascular: false,
+        alergias: false,
+    });
+    const [otrosAntecedentesFamiliares, setOtrosAntecedentesFamiliares] = useState("");
+
     // Notas (Paso 1)
     const [observaciones, setObservaciones] = useState("");
 
@@ -552,7 +562,52 @@ function NuevoPaciente() {
                         </div>
                     )}
 
-                    {/* Sección 4: Notas */}
+                    {/* Sección 4: Antecedentes Heredofamiliares */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-1">Antecedentes Heredofamiliares</h2>
+
+                        <p className="text-sm text-gray-500 mb-4">Marca las condiciones presentes en la familia del paciente</p>
+
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
+                            {[
+                                { clave: "diabetes", etiqueta: "Diabetes" },
+                                { clave: "hipertension", etiqueta: "Hipertensión" },
+                                { clave: "obesidad", etiqueta: "Obesidad" },
+                                { clave: "cardiovascular", etiqueta: "Enf. Cardiovascular" },
+                                { clave: "alergias", etiqueta: "Alergías" },
+                            ].map((item) => (
+                                <label key={item.clave} className="flex items-center gap-2 cursor-pointer">
+                                    <input 
+                                        type="checkbox"
+                                        checked={antecedentesFamiliares[item.clave as keyof typeof antecedentesFamiliares]}
+                                        onChange={(e) => 
+                                            setAntecedentesFamiliares({
+                                                ...antecedentesFamiliares,
+                                                [item.clave]: e.target.checked,
+                                            })
+                                        }
+                                        className="w-4 h-4 accent-teal-600 cursor-pointer"
+                                    />
+                                    <span className="text-sm text-gray-700">{item.etiqueta}</span>
+                                </label>
+                            ))}
+                        </div>
+
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-1">Especificar (opcional)</label>
+
+                            <input 
+                                type="text"
+                                value={otrosAntecedentesFamiliares}
+                                onChange={(e) => setOtrosAntecedentesFamiliares(e.target.value)}
+                                maxLength={300}
+                                placeholder="Especificar familiar u otras condiciones (Ej. Abuelo materno con diabetes)"
+                                className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Sección 5: Notas */}
                     <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
                         <h2 className="text-lg font-bold text-gray-900 mb-4">Notas y antecedentes clínicos</h2>
 
