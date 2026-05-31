@@ -14,30 +14,48 @@ interface ErroresPaso1 {
     inicioComplementaria?: string;
 }
 
+interface ErroresPaso2 {
+    nombreTutor?: string;
+    parentesco?: string;
+    telefono?: string;
+    email?: string;
+    accesoAppMovil?: string;
+}
+
 function NuevoPaciente() {
 
     const navigate = useNavigate();
 
-    // Datos del paciente
+    const [pasoActual, setPasoActual] = useState<1 | 2 | 3>(1);
+
+    // Datos del paciente (Paso 1)
     const [nombre, setNombre] = useState("");
     const [sexo, setSexo] = useState("");
     const [fechaNacimiento, setFechaNacimiento] = useState("");
 
-    // Historial Perinatal
+    // Historial Perinatal (Paso 1)
     const [semanasGestacion, setSemanasGestacion] = useState("");
     const [pesoNacer, setPesoNacer] = useState("");
     const [tallaNacer, setTallaNacer] = useState("");
     const [perimetroCefalicoNacer, setPerimetroCefalicoNacer] = useState("");
     const [tipoParto, setTipoParto] = useState("");
 
-    // Antecedentes Nutricionales
+    // Antecedentes Nutricionales (Paso 1)
     const [tipoAlimentacion, setTipoAlimentacion] = useState("");
     const [inicioComplementaria, setInicioComplementaria] = useState("");
 
-    // Notas
+    // Notas (Paso 1)
     const [observaciones, setObservaciones] = useState("");
 
+    // Datos del tutor (Paso 2)
+    const [nombreTutor, setNombreTutor] = useState("");
+    const [parentesco, setParentesco] = useState("");
+    const [telefono, setTelefono] = useState("");
+    const [email, setEmail] = useState("");
+    const [accesoAppMovil, setAccesoAppMovil] = useState(true);
+
     const [errores, setErrores] = useState<ErroresPaso1>({});
+    const [erroresPaso2, setErroresPaso2] = useState<ErroresPaso2>({});
 
     // Calcular edad en meses a partir de la fecha de nacimiento
     const calcularEdadMeses = (fecha: string): number | null => {
@@ -211,11 +229,58 @@ function NuevoPaciente() {
         return Object.keys(nuevosErrores).length === 0;
     };
 
+    const validarPaso2 = () => {
+        const nuevosErrores: ErroresPaso2 = {};
+
+        if (!nombreTutor.trim()) {
+            nuevosErrores.nombreTutor = "El nombre del tutor es obligatorio";
+        } else if (nombreTutor.trim().length < 2) {
+            nuevosErrores.nombreTutor = "El nombre debe tener al menos 2 caracteres";
+        } else if (nombreTutor.length > 100) {
+            nuevosErrores.nombreTutor = "El nombre no puede exceder 100 caracteres";
+        } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(nombreTutor)) {
+            nuevosErrores.nombreTutor = "El nombre solo puede contener letras y espacios";
+        }
+
+        if (!parentesco) {
+            nuevosErrores.parentesco = "Selecciona el parentesco";
+        }
+
+        if (!telefono.trim()) {
+            nuevosErrores.telefono = "El teléfono es obligatorio";
+        } else if (!/^\d{10}$/.test(telefono)) {
+            nuevosErrores.telefono = "El teléfono debe tener 10 dígitos";
+        }
+
+        if (!email.trim()) {
+            nuevosErrores.email = "El correo eletrónico es obligatorio";
+        } else if (email.length > 100) {
+            nuevosErrores.email = "El correo no puede exceder 100 caracteres";
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+            nuevosErrores.email = "Ingresa un correo electrónico válido";
+        }
+
+        if(!accesoAppMovil) {
+            nuevosErrores.accesoAppMovil = "Es obligatorio generar el acceso a la App Móvil para vincular el expediente.";
+        }
+
+        setErroresPaso2(nuevosErrores);
+        return Object.keys(nuevosErrores).length === 0;
+    };
+
     const handleContinuar = () => {
         if (validarPaso1()) {
-            alert("Paso 1 válido. Aquí continuaría al paso 2 (Datos del tutor)");
+            setPasoActual(2);
 
-            // Navigate al paso 2 cuando lo implementemos
+            window.scrollTo({ top: 0, behavior: "smooth" });
+        }
+    };
+
+    const handleContinuarPaso2 = () => {
+        if (validarPaso2()) {
+            setPasoActual(3);
+
+            window.scrollTo({ top: 0, behavior: "smooth" });
         }
     };
 
@@ -230,284 +295,442 @@ function NuevoPaciente() {
 
             <h1 className="text-2xl font-bold text-gray-900 mb-1">Nuevo Paciente</h1>
 
-            <p className="text-gray-500 text-sm mb-6">Paso 1 de 3 - Identidad del paciente</p>
+            {pasoActual === 1 && (
+                <>
+                    <p className="text-gray-500 text-sm mb-6">Paso 1 de 3 - Identidad del paciente</p>
 
-            {/* Sección 1: Identificación básica */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Identificación básica</h2>
+                    {/* Sección 1: Identificación básica */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Identificación básica</h2>
 
-                <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 mb1">Nombre completo <span className="text-red-500">*</span></label>
-                    <input 
-                        type="text"
-                        value={nombre}
-                        onChange={(e) => {
-                            setNombre(e.target.value);
-
-                            if (errores.nombre) setErrores({ ...errores, nombre: undefined });
-                        }}
-                        placeholder="Ej. Mateo García López"
-                        className={inputClass(errores.nombre)}
-                    />
-                    {errores.nombre && (
-                        <p className="text-xs text-red-500 mt-1">{errores.nombre}</p>
-                    )}
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Sexo biológico <span className="text-red-500">*</span></label>
-
-                        <select
-                            value={sexo}
-                            onChange={(e) => {
-                                setSexo(e.target.value);
-
-                                if (errores.sexo) setErrores({ ...errores, sexo: undefined });
-                            }}
-                            className={inputClass(errores.sexo) + " bg-white"}
-                        >
-                            <option value="">Seleccionar</option>
-                            <option value="M">Masculino</option>
-                            <option value="F">Femenino</option>
-                        </select>
-                        {errores.sexo && (
-                            <p className="text-xs text-red-500 mt-1">{errores.sexo}</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de nacimiento <span className="text-red-500">*</span></label>
-
-                        <input 
-                            type="date"
-                            value={fechaNacimiento}
-                            onChange={(e) => {
-                                setFechaNacimiento(e.target.value);
-
-                                if (errores.fechaNacimiento) setErrores({ ...errores, fechaNacimiento: undefined});
-                            }}
-                            className={inputClass(errores.fechaNacimiento)}
-                        />
-                        {errores.fechaNacimiento && (
-                            <p className="text-xs text-red-500 mt-1">{errores.fechaNacimiento}</p>
-                        )}
-
-                        {edadMeses !== null && edadMeses >= 0 && (
-                            <p className="text-xs text-teal-600 mt-1">Edad: {edadMeses} {edadMeses === 1 ? "mes" : "meses"}</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Sección 2: Historial Perinatal */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Historial Perinatal (Nacimiento)</h2>
-
-                <div className="grid grid-cols-2 gap-4 mb-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Semanas de gestación <span className="text-red-500">*</span></label>
-
-                        <select
-                            value={semanasGestacion}
-                            onChange={(e) => {
-                                setSemanasGestacion(e.target.value);
-
-                                if (errores.semanasGestacion) setErrores({ ...errores, semanasGestacion: undefined});
-                            }}
-                            className={inputClass(errores.semanasGestacion) + " bg-white"}
-                        >
-                            <option value="">Seleccionar</option>
-                            {Array.from({ length: 19 }, (_, i) => 24 + i).map((semana) => (
-                                <option key={semana} value={semana}>
-                                    {semana} semanas
-                                </option>
-                            ))}
-                        </select>
-
-                        {errores.semanasGestacion && (
-                            <p className="text-xs text-red-500 mt-1">{errores.semanasGestacion}</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de parto <span className="text-red-500">*</span></label>
-
-                        <select 
-                            value={tipoParto}
-                            onChange={(e) => {
-                                setTipoParto(e.target.value);
-
-                                if (errores.tipoParto) setErrores({ ...errores, tipoParto: undefined });
-                            }}
-                            className={inputClass(errores.tipoParto) + " bg-white"}
-                        >
-                            <option value="">Seleccionar</option>
-                            <option value="Vaginal">Vaginal</option>
-                            <option value="Cesarea">Cesárea</option>
-                        </select>
-                        {errores.tipoParto && (
-                            <p className="text-xs text-red-500 mt-1">{errores.tipoParto}</p>
-                        )}
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-3 gap-4">
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Peso al nacer (kg) <span className="text-red-500">*</span></label>
-
-                        <input 
-                            type="text"
-                            inputMode="decimal"
-                            value={pesoNacer}
-                            onChange={(e) => {
-                                if(e.target.value === "" || regexPeso.test(e.target.value)) {
-                                    setPesoNacer(e.target.value);
-
-                                    if(errores.pesoNacer) setErrores({ ...errores, pesoNacer: undefined });
-                                }
-                            }}
-                            onBlur={() => formatearNumero(pesoNacer, setPesoNacer)}
-                            placeholder="0.000"
-                            className={inputClass(errores.pesoNacer)}
-                        />
-                        {errores.pesoNacer && (
-                            <p className="text-xs text-red-500 mt-1">{errores.pesoNacer}</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Talla al nacer (cm) <span className="text-red-500">*</span></label>
-
-                        <input 
-                            type="text"
-                            inputMode="decimal"
-                            value={tallaNacer}
-                            onChange={(e) => {
-                                if (e.target.value === "" || regexTalla.test(e.target.value)) {
-                                    setTallaNacer(e.target.value);
-
-                                    if (errores.tallaNacer) setErrores({ ...errores, tallaNacer: undefined });
-                                }
-                            }}
-                            onBlur={() => formatearNumero(tallaNacer, setTallaNacer)}
-                            placeholder="0.0"
-                            className={inputClass(errores.tallaNacer)}
-                        />
-                        {errores.tallaNacer && (
-                            <p className="text-xs text-red-500 mt-1">{errores.tallaNacer}</p>
-                        )}
-                    </div>
-
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Perímetro Cefálico (cm)</label>
-
-                        <input 
-                            type="text"
-                            inputMode="decimal"
-                            value={perimetroCefalicoNacer}
-                            onChange={(e) => {
-                                if (e.target.value === "" || regexTalla.test(e.target.value)) {
-                                    setPerimetroCefalicoNacer(e.target.value);
-
-                                    if (errores.perimetroCefalicoNacer) setErrores({ ...errores, perimetroCefalicoNacer: undefined });
-                                }
-                            }}
-                            onBlur={() => formatearNumero(perimetroCefalicoNacer, setPerimetroCefalicoNacer)}
-                            placeholder="0.0"
-                            className={inputClass(errores.perimetroCefalicoNacer)}
-                        />
-                        {errores.perimetroCefalicoNacer && (
-                            <p className="text-xs text-red-500 mt-1">{errores.perimetroCefalicoNacer}</p>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            {/* Sección 3: Antecedentes Nutricionales (dinámico) */}
-            {caso !== null && (
-                <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-                    <h2 className="text-lg font-bold text-gray-900 mb-4">Antecedentes Nutricionales</h2>
-
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="block text-sm font-medium text-gray-700 mb-1">{etiquetaAlimentacion()} <span className="text-red-500">*</span></label>
-
-                            <select
-                                value={tipoAlimentacion}
+                        <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb1">Nombre completo <span className="text-red-500">*</span></label>
+                            <input 
+                                type="text"
+                                value={nombre}
                                 onChange={(e) => {
-                                    setTipoAlimentacion(e.target.value);
+                                    setNombre(e.target.value);
 
-                                    if (errores.tipoAlimentacion) setErrores({ ...errores, tipoAlimentacion: undefined });
+                                    if (errores.nombre) setErrores({ ...errores, nombre: undefined });
                                 }}
-                                className={inputClass(errores.tipoAlimentacion) + " bg-white"}
-                            >
-                                <option value="">Seleccionar</option>
-                                {opcionesAlimentacion().map((op) => (
-                                    <option key={op} value={op}>{op}</option>
-                                ))}
-                            </select>
-                            {errores.tipoAlimentacion && (
-                                <p className="text-xs text-red-500 mt-1">{errores.tipoAlimentacion}</p>
+                                placeholder="Ej. Mateo García López"
+                                className={inputClass(errores.nombre)}
+                            />
+                            {errores.nombre && (
+                                <p className="text-xs text-red-500 mt-1">{errores.nombre}</p>
                             )}
                         </div>
 
-                        {(caso === 2 || caso === 3) && (
+                        <div className="grid grid-cols-2 gap-4">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">{etiquetaComplementaria()} <span className="text-red-500">*</span></label>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Sexo biológico <span className="text-red-500">*</span></label>
 
                                 <select
-                                    value={inicioComplementaria}
+                                    value={sexo}
                                     onChange={(e) => {
-                                        setInicioComplementaria(e.target.value);
+                                        setSexo(e.target.value);
 
-                                        if (errores.inicioComplementaria) setErrores({ ...errores, inicioComplementaria: undefined });
+                                        if (errores.sexo) setErrores({ ...errores, sexo: undefined });
                                     }}
-                                    className={inputClass(errores.inicioComplementaria) + " bg-white"}
+                                    className={inputClass(errores.sexo) + " bg-white"}
                                 >
                                     <option value="">Seleccionar</option>
-                                    {opcionesComplementaria().map((op) => (
-                                        <option key={op} value={op}>{op}</option>
-                                    ))}
+                                    <option value="M">Masculino</option>
+                                    <option value="F">Femenino</option>
                                 </select>
-                                {errores.inicioComplementaria && (
-                                        <p className="text-xs text-red-500 mt-1">{errores.inicioComplementaria}</p>
+                                {errores.sexo && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.sexo}</p>
                                 )}
                             </div>
-                        )}
 
-                        {caso === 1 && (
-                            <div className="flex items-end">
-                                <p className="text-xs text-gray-400 italic pb-2">La introducción de alimentos sólidos no aplica para la edad actual</p>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Fecha de nacimiento <span className="text-red-500">*</span></label>
+
+                                <input 
+                                    type="date"
+                                    value={fechaNacimiento}
+                                    onChange={(e) => {
+                                        setFechaNacimiento(e.target.value);
+
+                                        if (errores.fechaNacimiento) setErrores({ ...errores, fechaNacimiento: undefined});
+                                    }}
+                                    className={inputClass(errores.fechaNacimiento)}
+                                />
+                                {errores.fechaNacimiento && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.fechaNacimiento}</p>
+                                )}
+
+                                {edadMeses !== null && edadMeses >= 0 && (
+                                    <p className="text-xs text-teal-600 mt-1">Edad: {edadMeses} {edadMeses === 1 ? "mes" : "meses"}</p>
+                                )}
                             </div>
-                        )}
+                        </div>
                     </div>
-                </div>
+
+                    {/* Sección 2: Historial Perinatal */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Historial Perinatal (Nacimiento)</h2>
+
+                        <div className="grid grid-cols-2 gap-4 mb-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Semanas de gestación <span className="text-red-500">*</span></label>
+
+                                <select
+                                    value={semanasGestacion}
+                                    onChange={(e) => {
+                                        setSemanasGestacion(e.target.value);
+
+                                        if (errores.semanasGestacion) setErrores({ ...errores, semanasGestacion: undefined});
+                                    }}
+                                    className={inputClass(errores.semanasGestacion) + " bg-white"}
+                                >
+                                    <option value="">Seleccionar</option>
+                                    {Array.from({ length: 19 }, (_, i) => 24 + i).map((semana) => (
+                                        <option key={semana} value={semana}>
+                                            {semana} semanas
+                                        </option>
+                                    ))}
+                                </select>
+
+                                {errores.semanasGestacion && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.semanasGestacion}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de parto <span className="text-red-500">*</span></label>
+
+                                <select 
+                                    value={tipoParto}
+                                    onChange={(e) => {
+                                        setTipoParto(e.target.value);
+
+                                        if (errores.tipoParto) setErrores({ ...errores, tipoParto: undefined });
+                                    }}
+                                    className={inputClass(errores.tipoParto) + " bg-white"}
+                                >
+                                    <option value="">Seleccionar</option>
+                                    <option value="Vaginal">Vaginal</option>
+                                    <option value="Cesarea">Cesárea</option>
+                                </select>
+                                {errores.tipoParto && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.tipoParto}</p>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Peso al nacer (kg) <span className="text-red-500">*</span></label>
+
+                                <input 
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={pesoNacer}
+                                    onChange={(e) => {
+                                        if(e.target.value === "" || regexPeso.test(e.target.value)) {
+                                            setPesoNacer(e.target.value);
+
+                                            if(errores.pesoNacer) setErrores({ ...errores, pesoNacer: undefined });
+                                        }
+                                    }}
+                                    onBlur={() => formatearNumero(pesoNacer, setPesoNacer)}
+                                    placeholder="0.000"
+                                    className={inputClass(errores.pesoNacer)}
+                                />
+                                {errores.pesoNacer && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.pesoNacer}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Talla al nacer (cm) <span className="text-red-500">*</span></label>
+
+                                <input 
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={tallaNacer}
+                                    onChange={(e) => {
+                                        if (e.target.value === "" || regexTalla.test(e.target.value)) {
+                                            setTallaNacer(e.target.value);
+
+                                            if (errores.tallaNacer) setErrores({ ...errores, tallaNacer: undefined });
+                                        }
+                                    }}
+                                    onBlur={() => formatearNumero(tallaNacer, setTallaNacer)}
+                                    placeholder="0.0"
+                                    className={inputClass(errores.tallaNacer)}
+                                />
+                                {errores.tallaNacer && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.tallaNacer}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Perímetro Cefálico (cm)</label>
+
+                                <input 
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={perimetroCefalicoNacer}
+                                    onChange={(e) => {
+                                        if (e.target.value === "" || regexTalla.test(e.target.value)) {
+                                            setPerimetroCefalicoNacer(e.target.value);
+
+                                            if (errores.perimetroCefalicoNacer) setErrores({ ...errores, perimetroCefalicoNacer: undefined });
+                                        }
+                                    }}
+                                    onBlur={() => formatearNumero(perimetroCefalicoNacer, setPerimetroCefalicoNacer)}
+                                    placeholder="0.0"
+                                    className={inputClass(errores.perimetroCefalicoNacer)}
+                                />
+                                {errores.perimetroCefalicoNacer && (
+                                    <p className="text-xs text-red-500 mt-1">{errores.perimetroCefalicoNacer}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sección 3: Antecedentes Nutricionales (dinámico) */}
+                    {caso !== null && (
+                        <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                            <h2 className="text-lg font-bold text-gray-900 mb-4">Antecedentes Nutricionales</h2>
+
+                            <div className="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-1">{etiquetaAlimentacion()} <span className="text-red-500">*</span></label>
+
+                                    <select
+                                        value={tipoAlimentacion}
+                                        onChange={(e) => {
+                                            setTipoAlimentacion(e.target.value);
+
+                                            if (errores.tipoAlimentacion) setErrores({ ...errores, tipoAlimentacion: undefined });
+                                        }}
+                                        className={inputClass(errores.tipoAlimentacion) + " bg-white"}
+                                    >
+                                        <option value="">Seleccionar</option>
+                                        {opcionesAlimentacion().map((op) => (
+                                            <option key={op} value={op}>{op}</option>
+                                        ))}
+                                    </select>
+                                    {errores.tipoAlimentacion && (
+                                        <p className="text-xs text-red-500 mt-1">{errores.tipoAlimentacion}</p>
+                                    )}
+                                </div>
+
+                                {(caso === 2 || caso === 3) && (
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">{etiquetaComplementaria()} <span className="text-red-500">*</span></label>
+
+                                        <select
+                                            value={inicioComplementaria}
+                                            onChange={(e) => {
+                                                setInicioComplementaria(e.target.value);
+
+                                                if (errores.inicioComplementaria) setErrores({ ...errores, inicioComplementaria: undefined });
+                                            }}
+                                            className={inputClass(errores.inicioComplementaria) + " bg-white"}
+                                        >
+                                            <option value="">Seleccionar</option>
+                                            {opcionesComplementaria().map((op) => (
+                                                <option key={op} value={op}>{op}</option>
+                                            ))}
+                                        </select>
+                                        {errores.inicioComplementaria && (
+                                                <p className="text-xs text-red-500 mt-1">{errores.inicioComplementaria}</p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {caso === 1 && (
+                                    <div className="flex items-end">
+                                        <p className="text-xs text-gray-400 italic pb-2">La introducción de alimentos sólidos no aplica para la edad actual</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Sección 4: Notas */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Notas y antecedentes clínicos</h2>
+
+                        <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones del expediente</label>
+
+                        <textarea 
+                            value={observaciones}
+                            onChange={(e) => setObservaciones(e.target.value)}
+                            rows={3}
+                            maxLength={1000}
+                            placeholder="Ej. Alergias alimentarias, condiciones genéticas, cirugías, complicaciones en el hospital, etc."
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none"
+                        ></textarea>
+                    </div>
+
+                    {/* Botón */}
+                    <div className="flex justify-end mb-8">
+                        <button
+                            onClick={handleContinuar}
+                            className="px-6 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700"
+                        >Continuar a Datos del Tutor →</button>
+                    </div>
+                </>
             )}
 
-            {/* Sección 4: Notas */}
-            <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4">Notas y antecedentes clínicos</h2>
+            {pasoActual === 2 && (
+                <>
+                    <p className="text-gray-500 text-sm mb-6">Paso 2 de 3 - Datos de contacto y responsable</p>
 
-                <label className="block text-sm font-medium text-gray-700 mb-1">Observaciones del expediente</label>
+                    {/* Sección 1: Información del Responsable */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Información del responsable</h2>
 
-                <textarea 
-                    value={observaciones}
-                    onChange={(e) => setObservaciones(e.target.value)}
-                    rows={3}
-                    maxLength={1000}
-                    placeholder="Ej. Alergias alimentarias, condiciones genéticas, cirugías, complicaciones en el hospital, etc."
-                    className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none"
-                ></textarea>
-            </div>
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Nombre del tutor <span className="text-red-500">*</span></label>
 
-            {/* Botón */}
-            <div className="flex justify-end mb-8">
-                <button
-                    onClick={handleContinuar}
-                    className="px-6 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700"
-                >Continuar a Datos del Tutor →</button>
-            </div>
+                                <input 
+                                    type="text"
+                                    value={nombreTutor}
+                                    onChange={(e) => {
+                                        setNombreTutor(e.target.value);
+
+                                        if (erroresPaso2.nombreTutor) setErroresPaso2({ ...errores, nombreTutor: undefined });
+                                    }}
+                                    placeholder="Ej. María López García"
+                                    className={inputClass(erroresPaso2.nombreTutor)}
+                                />
+                                {erroresPaso2.nombreTutor && (
+                                    <p className="text-xs text-red-500 mt-1">{erroresPaso2.nombreTutor}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Parentesco <span className="text-red-500">*</span></label>
+
+                                <select 
+                                    value={parentesco}
+                                    onChange={(e) => {
+                                        setParentesco(e.target.value);
+
+                                        if (erroresPaso2.parentesco) setErroresPaso2({ ...erroresPaso2, parentesco: undefined });
+                                    }}
+                                    className={inputClass(erroresPaso2.parentesco) + " bg-white"}
+                                >
+                                    <option value="">Seleccionar</option>
+                                    <option value="Madre">Madre</option>
+                                    <option value="Padre">Padre</option>
+                                    <option value="Abuelo/a">Abuelo/a</option>
+                                    <option value="Tutor Legal">Tutor Legal</option>
+                                    <option value="Otro">Otro</option>
+                                </select>
+                                {erroresPaso2.parentesco && (
+                                    <p className="text-xs text-red-500 mt-1">{erroresPaso2.parentesco}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sección 2: Datos de Contacto y Acceso */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Datos de contacto y acceso</h2>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono / WhatsApp <span className="text-red-500">*</span></label>
+
+                                <input 
+                                    type="text"
+                                    inputMode="numeric"
+                                    value={
+                                        telefono.length <= 2
+                                            ? telefono
+                                            : telefono.length <= 6
+                                            ? `${telefono.slice(0, 2)} ${telefono.slice(2)}`
+                                            : `${telefono.slice(0, 2)} ${telefono.slice(2, 6)} ${telefono.slice(6)}`
+                                    }
+                                    onChange={(e) => {
+                                        const valor = e.target.value.replace(/\s/g, "");
+
+                                        if (valor === "" || (/^\d+$/.test(valor) && valor.length <= 10)) {
+                                            setTelefono(valor);
+                                            if (erroresPaso2.telefono) setErroresPaso2({ ...erroresPaso2, telefono: undefined });
+                                        }
+                                    }}
+                                    placeholder="33 1234 5678"
+                                    className={inputClass(erroresPaso2.telefono)}
+                                />
+                                {erroresPaso2.telefono && (
+                                    <p className="text-xs text-red-500 mt-1">{erroresPaso2.telefono}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico <span className="text-red-500">*</span></label>
+
+                                <input 
+                                    type="email"
+                                    value={email}
+                                    onChange={(e) => {
+                                        setEmail(e.target.value);
+
+                                        if (erroresPaso2.email) setErroresPaso2({ ...erroresPaso2, email: undefined});
+                                    }}
+                                    placeholder="correo@ejemplo.com"
+                                    className={inputClass(erroresPaso2.email)}
+                                />
+                                {erroresPaso2.email && (
+                                    <p className="text-xs text-red-500 mt-1">{erroresPaso2.email}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sección 3: App Móvil */}
+                    <div className={`bg-white rounded-xl border p-6 mb-6 ${erroresPaso2.accesoAppMovil ? "border-red-400" : "border-gray-200"}`}>
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Acceso a la App Móvil</h2>
+
+                        <label className="flex items-start gap-3 cursor-pointer">
+                            <input 
+                                type="checkbox"
+                                checked={accesoAppMovil}
+                                onChange={(e) => {
+                                    setAccesoAppMovil(e.target.checked);
+
+                                    if (erroresPaso2.accesoAppMovil) setErroresPaso2({ ...erroresPaso2, accesoAppMovil: undefined });
+                                }}
+                                className="mt-1 w-4 h-4 accent-teal-600 cursor-pointer"
+                            />
+                            <div>
+                                <p className="text-sm font-medium text-gray-700">Generar acceso a la App Móvil y enviar credenciales temporales por correo</p>
+
+                                <p className="text-xs text-gray-500 mt-1">El sistema autogenerará una contraseña segura y obligará al tutor a cambiarla en su primer inicio de sesión.</p>
+                                {erroresPaso2.accesoAppMovil && (
+                                    <p className="text-xs text-red-500 mt-2">{erroresPaso2.accesoAppMovil}</p>
+                                )}
+                            </div>
+                        </label>
+                    </div>
+
+                    {/* Navegación */}
+                    <div className="flex justify-between mb-8">
+                        <button
+                            onClick={() => {
+                                setPasoActual(1);
+
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="px-6 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >← Regresar al Paso 1</button>
+
+                        <button 
+                            onClick={handleContinuarPaso2}
+                            className="px-6 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700"
+                        >Continuar a Primera Consulta →</button>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
