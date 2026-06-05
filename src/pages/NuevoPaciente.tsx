@@ -22,6 +22,13 @@ interface ErroresPaso2 {
     accesoAppMovil?: string;
 }
 
+interface ErroresPaso3 {
+    fechaConsulta?: string;
+    pesoActual?: string;
+    tallaActual?: string;
+    perimetroCefalicoConsulta?: string;
+}
+
 function NuevoPaciente() {
 
     const navigate = useNavigate();
@@ -64,8 +71,28 @@ function NuevoPaciente() {
     const [email, setEmail] = useState("");
     const [accesoAppMovil, setAccesoAppMovil] = useState(true);
 
+    // Datos de la Primera Consulta (Paso 3)
+    const hoy = new Date();
+    const mes = String(hoy.getMonth() + 1).padStart(2, '0');
+    const dia = String(hoy.getDate()).padStart(2, '0');
+    const hoyStr = `${hoy.getFullYear()}-${mes}-${dia}`;
+
+    const [fechaConsulta, setFechaConsulta] = useState(hoyStr);
+    const [pesoActual, setPesoActual] = useState("");
+    const [tallaActual, setTallaActual] = useState("");
+    const [perimetroCefalicoConsulta, setPerimetroCefalicoConsulta] = useState("");
+    const [cintura, setCintura] = useState("");
+    const [abdomen, setAbdomen] = useState("");
+    const [cadera, setCadera] = useState("");
+    const [pantorrilla, setPantorrilla] = useState("");
+    const [braquial, setBraquial] = useState("");
+    const [tricipital, setTricipital] = useState("");
+    const [mostrarComplementarias, setMostrarComplementarias] = useState(false);
+    const [notasConsulta, setNotasConsulta] = useState("");
+
     const [errores, setErrores] = useState<ErroresPaso1>({});
     const [erroresPaso2, setErroresPaso2] = useState<ErroresPaso2>({});
+    const [erroresPaso3, setErroresPaso3] = useState<ErroresPaso3>({});
 
     // Calcular edad en meses a partir de la fecha de nacimiento
     const calcularEdadMeses = (fecha: string): number | null => {
@@ -87,6 +114,65 @@ function NuevoPaciente() {
     }
 
     const edadMeses = calcularEdadMeses(fechaNacimiento);
+
+    // Calcular la edad precisa
+    const calcularEdadPrecisa = (nacimiento: string, consulta: string): string => {
+        if (!nacimiento || !consulta) return "";
+
+        const [anioN, mesN, diaN] = nacimiento.split("-").map(Number);
+        const [anioC, mesC, diaC] = consulta.split("-").map(Number);
+
+        const fNac = new Date(anioN, mesN - 1, diaN);
+        const fCon = new Date (anioC, mesC -1, diaC);
+
+        if (fCon < fNac) return "";
+
+        let anios = fCon.getFullYear() - fNac.getFullYear();
+        let meses = fCon.getMonth() - fNac.getMonth();
+        let dias = fCon.getDate() - fNac.getDate();
+
+        if (dias < 0) {
+            meses--;
+            const ultimoDiaMesAnterior = new Date(fCon.getFullYear(), fCon.getMonth(), 0).getDate();
+            
+            dias += ultimoDiaMesAnterior;
+        }
+
+        if (meses < 0) {
+            anios--;
+            meses += 12;
+        }
+
+        const partes: string[] = [];
+        
+        if (anios > 0) partes.push(`${anios} ${anios === 1 ? "año" : "años"}`);
+        if (meses > 0) partes.push(`${meses} ${meses === 1 ? "mes" : "meses"}`);
+        if (dias > 0) partes.push(`${dias} ${dias === 1 ? "día" : "días"}`);
+
+        if (partes.length === 0) return "Recien nacido";
+        if (partes.length === 1) return partes[0];
+        if (partes.length === 2) return `${partes[0]} y ${partes[1]}`;
+        return `${partes[0]}, ${partes[1]} y ${partes[2]}`;
+    };
+
+    const edadEnConsulta = calcularEdadPrecisa(fechaNacimiento, fechaConsulta);
+
+
+    // Cálculo del Indice de Masa Corporal (IMC)
+    const calcularIMC = (): string | null => {
+        const peso = Number(pesoActual);
+        const talla = Number(tallaActual);
+
+        if (!peso || !talla || peso <= 0 || talla <= 0) return null;
+
+        const tallaMetros = talla / 100;
+
+        const imc = peso / (tallaMetros * tallaMetros);
+
+        return imc.toFixed(1);
+    }
+
+    const imcCalculado = calcularIMC();
 
     // Determinar el caso segun la edad
     // Caso 1: 0-5 meses | Caso 2: 6-23 meses | Caso 3: 24+ meses
@@ -132,6 +218,9 @@ function NuevoPaciente() {
 
         return "";
     }
+
+    const etiquetaTalla = edadMeses !== null && edadMeses < 24 ? "Talla / Longitud (cm)" : "Estatura (cm)";
+    
     
     const opcionesComplementaria = () => {
         if (caso === 2) {
@@ -145,8 +234,9 @@ function NuevoPaciente() {
         return [];
     }
 
-    const regexPeso = /^(0|[1-9]\d?)?(\.\d{0,3})?$/;
+    const regexPeso = /^(0|[1-9]\d{0,2})?(\.\d{0,3})?$/;
     const regexTalla = /^(0|[1-9]\d?)?(\.\d{0,1})?$/;
+    const regexTallaConsulta = /^(0|[1-9]\d{0,2})?(\.\d{0,1})?$/;
 
     const formatearNumero = (
         valor: string,
@@ -278,6 +368,57 @@ function NuevoPaciente() {
         return Object.keys(nuevosErrores).length === 0;
     };
 
+    const validarPaso3 = () => {
+        const nuevosErrores: ErroresPaso3 = {};
+
+        // 1. Validación de Fecha
+        if (!fechaConsulta) {
+            nuevosErrores.fechaConsulta = "La fecha de consulta es obligatoria";
+        } else {
+            if (fechaConsulta > hoyStr) {
+                nuevosErrores.fechaConsulta = "La fecha no puede ser futura";
+            } else if (fechaNacimiento && fechaConsulta < fechaNacimiento) {
+                nuevosErrores.fechaConsulta = "La fecha no puede ser anterior al nacimiento";
+            }
+        }
+
+        // 2. Validación de Peso (Límite biológicos)
+        const pesoNum = Number(pesoActual);
+
+        if (!pesoActual.trim()) {
+            nuevosErrores.pesoActual = "El peso es obligatorio";
+        } else if (isNaN(pesoNum) || pesoNum <= 0) {
+            nuevosErrores.pesoActual = "Ingresa un peso válido mayor a 0";
+        } else if (pesoNum > 250) {
+            nuevosErrores.pesoActual = "Revise el peso, excede el límite clínico";
+        }
+
+        // 3. Validación de Talla (Límites biológicos)
+        const tallaNum = Number(tallaActual);
+
+        if (!tallaActual.trim()) {
+            nuevosErrores.tallaActual = "La talla es obligatoria";
+        } else if (isNaN(tallaNum) || tallaNum <= 0) {
+            nuevosErrores.tallaActual = "Ingresa una talla válida mayor a 0";
+        } else if (tallaNum > 250) {
+            nuevosErrores.tallaActual = "Revisa la talla, excede el límite clínico";
+        }
+
+        // 4. Validación de Perímetro Cefálico (Opcional pero exacto)
+        if (perimetroCefalicoConsulta.trim()) {
+            const perimetroNum = Number(perimetroCefalicoConsulta);
+
+            if (isNaN(perimetroNum) || perimetroNum <= 0) {
+                nuevosErrores.perimetroCefalicoConsulta = "El perímetro debe ser mayor a 0";
+            } else if (perimetroNum > 70) {
+                nuevosErrores.perimetroCefalicoConsulta = "Excede el límite clínico";
+            }
+        }
+
+        setErroresPaso3(nuevosErrores);
+        return Object.keys(nuevosErrores).length === 0;
+    };
+
     const handleContinuar = () => {
         if (validarPaso1()) {
             setPasoActual(2);
@@ -293,6 +434,14 @@ function NuevoPaciente() {
             window.scrollTo({ top: 0, behavior: "smooth" });
         }
     };
+
+    const handleGuardarFinal = () => {
+        if (validarPaso3()) {
+            alert("Listo para enviar al Backend");
+
+            navigate("/pacientes");
+        }
+    }
 
     const inputClass = (error?: string) => 
         `w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${ error ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500" }`;
@@ -783,6 +932,209 @@ function NuevoPaciente() {
                             onClick={handleContinuarPaso2}
                             className="px-6 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700"
                         >Continuar a Primera Consulta →</button>
+                    </div>
+                </>
+            )}
+
+            {pasoActual === 3 && (
+                <>
+                    <p className="text-gray-500 text-sm mb-6">Paso 3 de 3 - Primera Consulta y Antropometría</p>
+
+                    {/* Sección 1: Fecha de Consulta */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Fecha de la consulta</h2>
+
+                        <div className="max-w-xs">
+                            <label className="bloc text-sm font-medium text-gray-700 mb-1">Fecha de consulta <span className="text-red-500">*</span></label>
+
+                            <input 
+                                type="date"
+                                value={fechaConsulta}
+                                onChange={(e) => {
+                                    setFechaConsulta(e.target.value);
+
+                                    if (erroresPaso3.fechaConsulta) setErroresPaso3({ ...errores, fechaConsulta: undefined });
+                                }}
+                                className={inputClass(erroresPaso3.fechaConsulta)}
+                            />
+                            {erroresPaso3.fechaConsulta && (
+                                <p className="text-xs text-red-500 mt-1">{erroresPaso3.fechaConsulta}</p>
+                            )}
+                        </div>
+                    </div>
+
+                    {/* Sección 2: Antropometría Básica */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Antropometría básica</h2>
+
+                        <div className="grid grid-cols-3 gap-4">
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Peso actual (kg) <span className="text-red-500">*</span></label>
+
+                                <input 
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={pesoActual}
+                                    onChange={(e) => {
+                                        if (e.target.value === "" || regexPeso.test(e.target.value)) {
+                                            setPesoActual(e.target.value);
+                                            
+                                            if (erroresPaso3.pesoActual) setErroresPaso3({ ...erroresPaso3, pesoActual: undefined});
+                                        }
+                                    }}
+                                    onBlur={() => formatearNumero(pesoActual, setPesoActual)}
+                                    placeholder="0.000"
+                                    className={inputClass(erroresPaso3.pesoActual)}
+                                />
+                                {erroresPaso3.pesoActual && (
+                                    <p className="text-xs text-red-500 mt-1">{erroresPaso3.pesoActual}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">{etiquetaTalla} <span className="text-red-500">*</span></label>
+
+                                <input 
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={tallaActual}
+                                    onChange={(e) => {
+                                        if (e.target.value === "" || regexTallaConsulta.test(e.target.value)) {
+                                            setTallaActual(e.target.value);
+
+                                            if (erroresPaso3.tallaActual) setErroresPaso3({ ...erroresPaso3, tallaActual: undefined });
+                                        }
+                                    }}
+                                    onBlur={() => formatearNumero(tallaActual, setTallaActual)}
+                                    placeholder="0.0"
+                                    className={inputClass(erroresPaso3.tallaActual)}
+                                />
+                                {erroresPaso3.tallaActual && (
+                                    <p className="text-xs text-red-500 mt-1">{erroresPaso3.tallaActual}</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">Perímetro Cefálico (cm)</label>
+
+                                <input 
+                                    type="text"
+                                    inputMode="decimal"
+                                    value={perimetroCefalicoConsulta}
+                                    onChange={(e) => {
+                                        if (e.target.value === "" || regexTallaConsulta.test(e.target.value)) {
+                                            setPerimetroCefalicoConsulta(e.target.value);
+
+                                            if (erroresPaso3.perimetroCefalicoConsulta) setErroresPaso3({ ...erroresPaso3, perimetroCefalicoConsulta: undefined });
+                                        }
+                                    }}
+                                    onBlur={() => formatearNumero(perimetroCefalicoConsulta, setPerimetroCefalicoConsulta)}
+                                    placeholder="0.0"
+                                    className={inputClass(erroresPaso3.perimetroCefalicoConsulta)}
+                                />
+                                {erroresPaso3.perimetroCefalicoConsulta && (
+                                    <p className="text-xs text-red-500 mt-1">{erroresPaso3.perimetroCefalicoConsulta}</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sección 3: Motor Clínico */}
+                    <div className="bg-teal-50 rounded-xl border border-teal-200 p-6 mb-6">
+                        <h2 className="text-sm font-bold text-teal-700 uppercase mb-4">Cálculo automático</h2>
+
+                        <div className="grid grid-cols-2 gap-4">
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">IMC calculado</p>
+                                {imcCalculado ? (
+                                    <p className="text-3xl font-bold text-teal-700">{imcCalculado} <span className="text-sm font-normal text-gray-500">kg/m²</span></p>
+                                ) : (
+                                    <p className="text-sm text-gray-400 mt-2">Ingresa peso y talla para calcular el IMC</p>
+                                )}
+                            </div>
+
+                            <div>
+                                <p className="text-xs text-gray-500 mb-1">Edad en la consulta</p>
+                                {edadEnConsulta ? (
+                                    <p className="text-lg font-bold text-teal-700 mt-1">{edadEnConsulta}</p>
+                                ) : (
+                                    <p className="text-sm text-gray-400 mt-2">Selecciona una fecha válida</p>
+                                )}
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Sección 4: Composición Corporal (Acordeón) */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <button
+                            type="button"
+                            onClick={() => setMostrarComplementarias(!mostrarComplementarias)}
+                            className="flex items-center gap-2 text-sm font-medium text-teal-600 hover:text-teal-800"
+                        >
+                            <span>{mostrarComplementarias ? "▼" : "▶"}</span>
+                            Medidas Complementarias de Composición Corporal (Opcional)
+                        </button>
+
+                        {mostrarComplementarias && (
+                            <div className="grid grid-cols-3 gap-4 mt-4">
+                                {[
+                                    { label: "Cintura (cm)", val: cintura, set: setCintura },
+                                    { label: "Abdomen (cm)", val: abdomen, set: setAbdomen },
+                                    { label: "Cadera (cm)", val: cadera, set: setCadera },
+                                    { label: "Pantorrilla (cm)", val: pantorrilla, set: setPantorrilla },
+                                    { label: "Perímetro braquial (cm)", val: braquial, set: setBraquial },
+                                    { label: "Pliegue tricipital (cm)", val: tricipital, set: setTricipital },
+                                ].map((campo) => (
+                                    <div key={campo.label}>
+                                        <label className="block text-sm font-medium text-gray-700 mb-1">{campo.label}</label>
+
+                                        <input 
+                                            type="text"
+                                            inputMode="decimal"
+                                            value={campo.val}
+                                            onChange={(e) => {
+                                                if (e.target.value === "" || regexTallaConsulta.test(e.target.value)) {
+                                                    campo.set(e.target.value);
+                                                }
+                                            }}
+                                            onBlur={() => formatearNumero(campo.val, campo.set)}
+                                            placeholder="0.0"
+                                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500"
+                                        />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    {/* Sección 5: Notas */}
+                    <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+                        <h2 className="text-lg font-bold text-gray-900 mb-4">Notas de la consulta</h2>
+
+                        <textarea 
+                            value={notasConsulta}
+                            onChange={(e) => setNotasConsulta(e.target.value)}
+                            rows={3}
+                            maxLength={1000}
+                            placeholder="Observaciones de la primera consulta..."
+                            className="w-full px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-teal-500 resize-none"
+                        />
+                    </div>
+
+                    {/* Navegación */}
+                    <div className="flex justify-between mb-8">
+                        <button
+                            onClick={() => {
+                                setPasoActual(2);
+                                window.scrollTo({ top: 0, behavior: "smooth" });
+                            }}
+                            className="px-6 py-2 border border-gray-200 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50"
+                        >← Regresar a Datos del Tutor</button>
+
+                        <button
+                            onClick={handleGuardarFinal}
+                            className="px-6 py-2 bg-teal-600 text-white rounded-lg text-sm font-medium hover:bg-teal-700"
+                        >Guardar Expediente y Consulta</button>
                     </div>
                 </>
             )}
