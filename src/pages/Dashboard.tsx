@@ -12,11 +12,11 @@ interface Consulta {
 }
 
 const consultasHoy: Consulta[] = [
-  { id: 1, hora: "08:00", nombre: "Lucía Mendoza", iniciales: "LM", edad: "6 meses" },
-  { id: 2, hora: "09:00", nombre: "Mateo Ramírez", iniciales: "MR", edad: "2 años" },
-  { id: 3, hora: "10:30", nombre: "Sofía Vargas", iniciales: "SV", edad: "4 años" },
-  { id: 4, hora: "12:00", nombre: "Tomás López", iniciales: "TL", edad: "8 meses" },
-  { id: 5, hora: "14:30", nombre: "Valentina Castro", iniciales: "VC", edad: "5 años" },
+  { id: 1, hora: "08:00", nombre: "Diego Emilio Enciso Mora", iniciales: "DM", edad: "6 meses" },
+  { id: 2, hora: "09:00", nombre: "Christian Uriel Diaz Ascencio", iniciales: "CD", edad: "2 años" },
+  { id: 3, hora: "10:30", nombre: "Miguel Angel Velazquez Gonzalez", iniciales: "MV", edad: "4 años" },
+  { id: 4, hora: "12:00", nombre: "Jose Alberto Gonzalez Ochoa", iniciales: "JG", edad: "18 meses" },
+  { id: 5, hora: "14:30", nombre: "Daniela Melgoza Tamayo", iniciales: "DM", edad: "8 años" },
 ];
 
 function Dashboard() {
