@@ -13,8 +13,10 @@ import {
   Calculator,
   ArrowLeft,
   ArrowRight,
+  TriangleAlert,
 } from "lucide-react";
 import Stepper from "../components/nuevopaciente/Stepper";
+import InputChips from "../components/nuevopaciente/InputChips";
 
 interface ErroresPaso1 {
   nombre?: string;
@@ -73,7 +75,11 @@ function NuevoPaciente() {
     cardiovascular: false,
     alergias: false,
   });
+  
   const [otrosAntecedentesFamiliares, setOtrosAntecedentesFamiliares] = useState("");
+
+  const [alergias, setAlergias] = useState<string[]>([]);
+  const [condicionesCronicas, setCondicionesCronicas] = useState<string[]>([]);
 
   // Notas (Paso 1)
   const [observaciones, setObservaciones] = useState("");
@@ -710,7 +716,41 @@ function NuevoPaciente() {
             </div>
           )}
 
-          {/* Sección 4: Antecedentes Heredofamiliares */}
+          {/* Sección 4: Alertas Clinicas */}
+          <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
+            <CardHeader icon={TriangleAlert} titulo="Alertas Médicas" />
+            <p className="text-sm text-gray-500 mb-4 -mt-2">
+              Registra alergias críticas y condiciones crónicas del paciente. Aparecerán destacadas en su expediente.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Alergias
+                </label>
+                <InputChips
+                  valores={alergias}
+                  onChange={setAlergias}
+                  placeholder="Ej. Alergia al huevo"
+                  colorChip="rojo"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Condiciones crónicas
+                </label>
+                <InputChips
+                  valores={condicionesCronicas}
+                  onChange={setCondicionesCronicas}
+                  placeholder="Ej. Diabetes tipo 1"
+                  colorChip="ambar"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Sección 5: Antecedentes Heredofamiliares */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
             <CardHeader icon={Users} titulo="Antecedentes Heredofamiliares" />
             <p className="text-sm text-gray-500 mb-4 -mt-2">
