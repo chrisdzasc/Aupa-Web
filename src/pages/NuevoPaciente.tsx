@@ -175,6 +175,21 @@ function NuevoPaciente() {
 
   const edadEnConsulta = calcularEdadPrecisa(fechaNacimiento, fechaConsulta);
 
+  const calcularEdadMesesEnFecha = (nacimiento: string, consulta: string): number | null => {
+    if (!nacimiento || !consulta) return null;
+    const [anioN, mesN, diaN] = nacimiento.split("-").map(Number);
+    const [anioC, mesC, diaC] = consulta.split("-").map(Number);
+    const fNac = new Date(anioN, mesN - 1, diaN);
+    const fCon = new Date(anioC, mesC - 1, diaC);
+    if (fCon < fNac) return null;
+    let meses = (fCon.getFullYear() - fNac.getFullYear()) * 12;
+    meses += fCon.getMonth() - fNac.getMonth();
+    if (fCon.getDate() < fNac.getDate()) meses--;
+    return meses;
+  };
+
+  const edadMesesEnConsulta = calcularEdadMesesEnFecha(fechaNacimiento, fechaConsulta);
+
   // Cálculo del Índice de Masa Corporal (IMC)
   const calcularIMC = (): string | null => {
     const peso = Number(pesoActual);
@@ -232,7 +247,9 @@ function NuevoPaciente() {
   };
 
   const etiquetaTalla =
-    edadMeses !== null && edadMeses < 24 ? "Talla / Longitud (cm)" : "Estatura (cm)";
+    edadMesesEnConsulta !== null && edadMesesEnConsulta < 24
+      ? "Talla / Longitud (cm)"
+      : "Estatura (cm)";
 
   const opcionesComplementaria = () => {
     if (caso === 2) {
