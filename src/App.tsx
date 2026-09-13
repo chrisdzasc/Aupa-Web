@@ -22,6 +22,7 @@ function App() {
           <Route path="/pacientes/:id" element={<DetallePaciente />} />
           <Route path="/pacientes/:id/nueva-medicion" element={<FormularioMedicion />} />
           <Route path="/pacientes/:id/mediciones/:idMedicion" element={<DetalleMedicion />} />
+          <Route path="/pacientes/:id/mediciones/:idMedicion/editar" element={<FormularioMedicion />} />
         </Route>
 
         <Route path="*" element={<Navigate to="/login" />} />

@@ -1,6 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { Calendar, Ruler, Calculator, ClipboardList, ArrowLeft, ChevronRight } from "lucide-react";
+import {
+  Calendar,
+  Ruler,
+  Calculator,
+  ClipboardList,
+  ArrowLeft,
+  ChevronRight,
+} from "lucide-react";
 
 interface Errores {
   fechaConsulta?: string;
@@ -13,26 +20,46 @@ interface Errores {
 const pacienteEjemplo = {
   id: 2,
   nombre: "Mateo García López",
-  fechaNacimiento: "2024-03-15", // formato YYYY-MM-DD para los cálculos
+  fechaNacimiento: "2024-03-15",
+};
+
+// ---- Medición de ejemplo para modo editar (vendrá del backend) ----
+const medicionExistente = {
+  id: 12,
+  fechaConsulta: "2026-09-15",
+  peso: "11.8",
+  talla: "83.5",
+  perimetroCefalico: "47.8",
+  perimetroBraquial: "14.2",
+  cintura: "46.2",
+  abdomen: "48.0",
+  cadera: "49.5",
+  pantorrilla: "",
+  tricipital: "",
+  notas:
+    "El paciente muestra ganancia ponderal y de talla acorde a su carril de crecimiento. Control en 3 meses.",
 };
 
 function FormularioMedicion() {
-  const { id } = useParams();
+  const { id, idMedicion } = useParams();
   const navigate = useNavigate();
   const paciente = pacienteEjemplo;
 
-  // Fecha de hoy en formato YYYY-MM-DD
+  // Modo: si hay idMedicion en la URL, estamos editando
+  const modoEditar = Boolean(idMedicion);
+
+  // Fecha de hoy
   const hoy = new Date();
   const mes = String(hoy.getMonth() + 1).padStart(2, "0");
   const dia = String(hoy.getDate()).padStart(2, "0");
   const hoyStr = `${hoy.getFullYear()}-${mes}-${dia}`;
 
-  // Estados de la medición
+  // Estados
   const [fechaConsulta, setFechaConsulta] = useState(hoyStr);
   const [peso, setPeso] = useState("");
   const [talla, setTalla] = useState("");
-  const [perimetroBraquial, setPerimetroBraquial] = useState("");
   const [perimetroCefalico, setPerimetroCefalico] = useState("");
+  const [perimetroBraquial, setPerimetroBraquial] = useState("");
   const [cintura, setCintura] = useState("");
   const [abdomen, setAbdomen] = useState("");
   const [cadera, setCadera] = useState("");
@@ -43,7 +70,39 @@ function FormularioMedicion() {
 
   const [errores, setErrores] = useState<Errores>({});
 
-  // ---- Cálculo de edad en meses desde la fecha de nacimiento del paciente ----
+  // ---- Precargar datos en modo editar ----
+  useEffect(() => {
+    if (!modoEditar) return;
+
+    // Cuando haya backend: buscar la medición por idMedicion.
+    const m = medicionExistente;
+
+    setFechaConsulta(m.fechaConsulta);
+    setPeso(m.peso);
+    setTalla(m.talla);
+    setPerimetroCefalico(m.perimetroCefalico);
+    setPerimetroBraquial(m.perimetroBraquial);
+    setCintura(m.cintura);
+    setAbdomen(m.abdomen);
+    setCadera(m.cadera);
+    setPantorrilla(m.pantorrilla);
+    setTricipital(m.tricipital);
+    setNotas(m.notas);
+
+    // Abrir el acordeón si alguna complementaria tiene valor
+    const hayComplementarias = [
+      m.perimetroBraquial,
+      m.cintura,
+      m.abdomen,
+      m.cadera,
+      m.pantorrilla,
+      m.tricipital,
+    ].some((v) => v.trim() !== "");
+
+    if (hayComplementarias) setMostrarComplementarias(true);
+  }, [modoEditar, idMedicion]);
+
+  // ---- Edad en meses en la fecha de la consulta ----
   const calcularEdadMeses = (nacimiento: string, consulta: string): number | null => {
     if (!nacimiento || !consulta) return null;
     const [anioN, mesN, diaN] = nacimiento.split("-").map(Number);
@@ -59,7 +118,7 @@ function FormularioMedicion() {
 
   const edadMeses = calcularEdadMeses(paciente.fechaNacimiento, fechaConsulta);
 
-  // ---- Edad precisa en la fecha de la consulta ----
+  // ---- Edad precisa ----
   const calcularEdadPrecisa = (nacimiento: string, consulta: string): string => {
     if (!nacimiento || !consulta) return "";
     const [anioN, mesN, diaN] = nacimiento.split("-").map(Number);
@@ -100,11 +159,9 @@ function FormularioMedicion() {
   };
   const imcCalculado = calcularIMC();
 
-  // Etiqueta dinámica de talla según edad del paciente
   const etiquetaTalla =
     edadMeses !== null && edadMeses < 24 ? "Talla / Longitud (cm)" : "Estatura (cm)";
 
-  // ---- Regex y formateo ----
   const regexPeso = /^(0|[1-9]\d{0,2})?(\.\d{0,3})?$/;
   const regexMedida = /^(0|[1-9]\d{0,2})?(\.\d{0,1})?$/;
 
@@ -146,11 +203,23 @@ function FormularioMedicion() {
   };
 
   const handleGuardar = () => {
-    if (validar()) {
+    if (!validar()) return;
+
+    if (modoEditar) {
+      alert("Cambios guardados (simulado)");
+      navigate(`/pacientes/${id}/mediciones/${idMedicion}`);
+    } else {
       alert("Medición guardada (simulado)");
       navigate(`/pacientes/${id}`);
     }
   };
+
+  // Ruta de regreso según el modo
+  const rutaVolver = modoEditar
+    ? `/pacientes/${id}/mediciones/${idMedicion}`
+    : `/pacientes/${id}`;
+
+  const textoVolver = modoEditar ? "Volver al detalle de la medición" : "Volver al expediente";
 
   const inputClass = (error?: string) =>
     `w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${
@@ -168,20 +237,24 @@ function FormularioMedicion() {
     <div className="max-w-3xl mx-auto pb-28">
       {/* Encabezado */}
       <Link
-        to={`/pacientes/${id}`}
-        className="inline-flex items-center gap-1.5 text-teal-600 text-sm hover:underline mb-4 group"
+        to={rutaVolver}
+        className="inline-flex items-center gap-1.5 text-teal-600 text-sm hover:underline mb-4 group animate-entrance delay-1"
       >
         <ArrowLeft size={15} className="group-hover:-translate-x-1 transition-transform" />
-        Volver al expediente
+        {textoVolver}
       </Link>
 
-      <h1 className="text-2xl font-bold text-gray-900 mb-1">Nueva Medición</h1>
-      <p className="text-sm text-gray-500 mb-6">
-        Paciente: <span className="font-semibold text-gray-700">{paciente.nombre}</span>
-      </p>
+      <div className="animate-entrance delay-1">
+        <h1 className="text-2xl font-bold text-gray-900 mb-1">
+          {modoEditar ? "Editar Medición" : "Nueva Medición"}
+        </h1>
+        <p className="text-sm text-gray-500 mb-6">
+          Paciente: <span className="font-semibold text-gray-700">{paciente.nombre}</span>
+        </p>
+      </div>
 
       {/* Sección 1: Fecha de consulta */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 animate-entrance delay-1 hover:shadow-md transition-shadow">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 hover:shadow-md transition-shadow animate-entrance delay-1">
         <CardHeader icon={Calendar} titulo="Fecha de la consulta" />
         <div className="max-w-xs">
           <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -203,7 +276,7 @@ function FormularioMedicion() {
       </div>
 
       {/* Sección 2: Antropometría básica */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 animate-entrance delay-2 hover:shadow-md transition-shadow">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 hover:shadow-md transition-shadow animate-entrance delay-2">
         <CardHeader icon={Ruler} titulo="Antropometría básica" />
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div>
@@ -248,30 +321,29 @@ function FormularioMedicion() {
             {errores.talla && <p className="text-xs text-red-500 mt-1">{errores.talla}</p>}
           </div>
 
-          {/* Perímetro cefálico (con validación de error) */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Perímetro cefálico (cm)
-              </label>
-              <input
-                type="text"
-                inputMode="decimal"
-                value={perimetroCefalico}
-                onChange={(e) => {
-                  if (e.target.value === "" || regexMedida.test(e.target.value)) {
-                    setPerimetroCefalico(e.target.value);
-                    if (errores.perimetroCefalico)
-                      setErrores({ ...errores, perimetroCefalico: undefined });
-                  }
-                }}
-                onBlur={() => formatearNumero(perimetroCefalico, setPerimetroCefalico)}
-                placeholder="0.0"
-                className={inputClass(errores.perimetroCefalico)}
-              />
-              {errores.perimetroCefalico && (
-                <p className="text-xs text-red-500 mt-1">{errores.perimetroCefalico}</p>
-              )}
-            </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Perímetro Cefálico (cm)
+            </label>
+            <input
+              type="text"
+              inputMode="decimal"
+              value={perimetroCefalico}
+              onChange={(e) => {
+                if (e.target.value === "" || regexMedida.test(e.target.value)) {
+                  setPerimetroCefalico(e.target.value);
+                  if (errores.perimetroCefalico)
+                    setErrores({ ...errores, perimetroCefalico: undefined });
+                }
+              }}
+              onBlur={() => formatearNumero(perimetroCefalico, setPerimetroCefalico)}
+              placeholder="0.0"
+              className={inputClass(errores.perimetroCefalico)}
+            />
+            {errores.perimetroCefalico && (
+              <p className="text-xs text-red-500 mt-1">{errores.perimetroCefalico}</p>
+            )}
+          </div>
         </div>
       </div>
 
@@ -304,8 +376,8 @@ function FormularioMedicion() {
         </div>
       </div>
 
-      {/* Sección 4: Complementarias (acordeón) */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 animate-entrance delay-4 hover:shadow-md transition-shadow">
+      {/* Sección 4: Complementarias */}
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 hover:shadow-md transition-shadow animate-entrance delay-4">
         <button
           type="button"
           onClick={() => setMostrarComplementarias(!mostrarComplementarias)}
@@ -313,7 +385,9 @@ function FormularioMedicion() {
         >
           <ChevronRight
             size={16}
-            className={`transition-transform duration-300 ${mostrarComplementarias ? "rotate-90" : ""}`}
+            className={`transition-transform duration-300 ${
+              mostrarComplementarias ? "rotate-90" : ""
+            }`}
           />
           Medidas Complementarias de Composición Corporal (Opcional)
         </button>
@@ -321,11 +395,11 @@ function FormularioMedicion() {
         {mostrarComplementarias && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 accordion-content">
             {[
+              { label: "Perímetro braquial (cm)", val: perimetroBraquial, set: setPerimetroBraquial },
               { label: "Cintura (cm)", val: cintura, set: setCintura },
               { label: "Abdomen (cm)", val: abdomen, set: setAbdomen },
               { label: "Cadera (cm)", val: cadera, set: setCadera },
               { label: "Pantorrilla (cm)", val: pantorrilla, set: setPantorrilla },
-              { label: "Perímetro braquial (cm)", val: perimetroBraquial, set: setPerimetroBraquial },
               { label: "Pliegue tricipital (mm)", val: tricipital, set: setTricipital },
             ].map((campo) => (
               <div key={campo.label}>
@@ -350,7 +424,7 @@ function FormularioMedicion() {
       </div>
 
       {/* Sección 5: Notas */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 animate-entrance delay-5 hover:shadow-md transition-shadow">
+      <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6 hover:shadow-md transition-shadow animate-entrance delay-5">
         <CardHeader icon={ClipboardList} titulo="Notas de la consulta" />
         <textarea
           value={notas}
@@ -366,7 +440,7 @@ function FormularioMedicion() {
       <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-1px_4px_rgba(0,0,0,0.04)] z-40">
         <div className="max-w-3xl mx-auto px-6 py-4 flex justify-between items-center">
           <Link
-            to={`/pacientes/${id}`}
+            to={rutaVolver}
             className="px-4 py-2 rounded-lg text-sm font-medium text-gray-600 hover:bg-gray-100 transition-colors"
           >
             Cancelar
@@ -375,7 +449,7 @@ function FormularioMedicion() {
             onClick={handleGuardar}
             className="px-6 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors shadow-sm"
           >
-            Guardar medición
+            {modoEditar ? "Guardar cambios" : "Guardar medición"}
           </button>
         </div>
       </div>
