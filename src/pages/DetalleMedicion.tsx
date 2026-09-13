@@ -20,12 +20,12 @@ const medicionEjemplo = {
   fecha: "15 Sep 2026",
   edadEnConsulta: "2 años 3 meses",
   ultimaModificacion: "—", // placeholder hasta tener backend
-  // Antropometría básica (obligatorias)
+  // Antropometría básica
   pesoKg: 11.8,
   tallaCm: 83.5,
-  perimetroBraquialCm: 14.2,
-  // Complementarias (opcionales; null = no registrado)
   perimetroCefalicoCm: 47.8 as number | null,
+  // Complementarias (opcionales; null = no registrado)
+  perimetroBraquialCm: 14.2 as number | null,
   cinturaCm: 46.2 as number | null,
   abdomenCm: 48.0 as number | null,
   caderaCm: 49.5 as number | null,
@@ -61,7 +61,7 @@ function DetalleMedicion() {
     );
 
   const complementarias = [
-    { label: "Perímetro cefálico", valor: m.perimetroCefalicoCm, unidad: "cm" },
+    { label: "Perímetro braquial", valor: m.perimetroBraquialCm, unidad: "cm" },
     { label: "Cintura", valor: m.cinturaCm, unidad: "cm" },
     { label: "Abdomen", valor: m.abdomenCm, unidad: "cm" },
     { label: "Cadera", valor: m.caderaCm, unidad: "cm" },
@@ -164,13 +164,19 @@ function DetalleMedicion() {
         <span className="text-sm font-medium text-gray-500">cm</span>
       </div>
     </div>
+
     <div className="p-4 rounded-lg bg-gray-50 border border-gray-100 hover:border-teal-300 hover:bg-teal-50/30 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200 cursor-default group">
-      <span className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Perímetro braquial</span>
-      <div className="flex items-baseline gap-1">
-        <span className="text-2xl font-semibold text-gray-900 group-hover:text-teal-950 transition-colors">{m.perimetroBraquialCm}</span>
-        <span className="text-sm font-medium text-gray-500">cm</span>
-      </div>
+      <span className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Perímetro cefálico</span>
+      {m.perimetroCefalicoCm !== null ? (
+        <div className="flex items-baseline gap-1">
+          <span className="text-2xl font-semibold text-gray-900 group-hover:text-teal-950 transition-colors">{m.perimetroCefalicoCm}</span>
+          <span className="text-sm font-medium text-gray-500">cm</span>
+        </div>
+      ) : (
+        <span className="text-base font-normal text-gray-400 italic">No registrado</span>
+      )}
     </div>
+
     <div className="p-4 rounded-lg bg-teal-50 border border-teal-200 relative overflow-hidden hover:border-teal-400 hover:-translate-y-0.5 hover:shadow-md transition-all duration-200 cursor-default group">
       <div className="imc-breathe absolute -right-2 -bottom-2 w-20 h-20 bg-teal-200/40 rounded-full pointer-events-none"></div>
       <span className="block text-[11px] font-bold uppercase tracking-wider text-teal-800 mb-1.5 relative z-10">IMC Calculado</span>
