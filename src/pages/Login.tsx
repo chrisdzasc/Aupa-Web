@@ -1,6 +1,6 @@
-import { error } from "console";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import * as authService from "../services/auth.service";
 
 function Login() {
 
@@ -8,6 +8,8 @@ function Login() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
     const [errores, setErrores] = useState<{ email?: string; password?: string }>({});
+    const [cargando, setCargando] = useState(false);
+    const [errorServidor, setErrorServidor] = useState("");
 
     const validar = () => {
         const nuevoErrores: { email?: string, password?: string } = {};
@@ -27,9 +29,20 @@ function Login() {
         return Object.keys(nuevoErrores).length === 0;
     };
 
-    const handleLogin = () => {
-        if(validar()) {
-            navigate("/dashboard");
+    const handleLogin = async () => {
+        if (!validar()) return;
+      
+        setCargando(true);
+        setErrorServidor("");
+      
+        try {
+          await authService.login({ email, password });
+          navigate("/dashboard");
+        } catch (error) {
+          const mensaje = error instanceof Error ? error.message : "Error al iniciar sesión";
+          setErrorServidor(mensaje);
+        } finally {
+          setCargando(false);
         }
     };
 
@@ -60,7 +73,7 @@ function Login() {
                                 if(errores.email) setErrores({...errores, email: undefined});
                             }}
                             placeholder="tucorreo@gmail.com"
-                            className={`w-full px-4 py-3 border rounded-lg text-sm focus:outline-none ${ errores.email ? "border-red-400 focus:boder-red-500" : "border-teal-200 focus:border-teal-500" }`}
+                            className={`w-full px-4 py-3 border rounded-lg text-sm focus:outline-none ${ errores.email ? "border-red-400 focus:border-red-500" : "border-teal-200 focus:border-teal-500" }`}
                         />
                         {errores.email && (
                             <p className="text-xs text-red-500 mt-1">{errores.email}</p>
@@ -86,13 +99,20 @@ function Login() {
                     </div>
 
                     <div className="text-right mb-6">
-                        <a href="#" className="text-sm text-teal-600 hover:tex-teal-800">¿Olvidaste tú contraseña?</a>
+                        <button type="button" className="text-sm text-teal-600 hover:text-teal-800">¿Olvidaste tu contraseña?</button>
                     </div>
+
+                    {errorServidor && (
+                        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 mb-4">
+                            <p className="text-sm text-red-700">{errorServidor}</p>
+                        </div>
+                    )}
 
                     <button
                         onClick={handleLogin}
-                        className="w-full bg-teal-600 text-white py-3 rounded-lg font-bold hover:bg-teal-700"
-                    >Iniciar Sesión</button>
+                        disabled={cargando}
+                        className="w-full bg-teal-600 text-white py-3 rounded-lg font-bold hover:bg-teal-700 disabled:bg-teal-400 disabled:cursor-not-allowed transition-colors"
+                    >{cargando ? "Iniciando sesión..." : "Iniciar Sesión"}</button>
 
                     <p className="text-center text-sm text-gray-500 mt-6">Plataforma exclusiva para profesionista de la salud</p>
                 </div>
