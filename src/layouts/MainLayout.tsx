@@ -1,16 +1,32 @@
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { useState } from "react";
 import { Settings, LogOut, Moon, Sun, Menu, X } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { logout, obtenerProfesionista } from "../services/auth.service";
 
 function MainLayout() {
     const location = useLocation();
     const [temaOscuro, setTemaOscuro] = useState(false);
     const [menuAbierto, setMenuAbierto] = useState(false);
+    const navigate = useNavigate();
+    const profesionista = obtenerProfesionista();
+
+    const iniciales = profesionista?.nombre
+        ?.split(" ")
+        .slice(0, 2)
+        .map((p: string) => p[0])
+        .join("")
+        .toUpperCase() || "US";
 
     const isActive = (path: string) => {
         return location.pathname === path
             ? "text-teal-600 font-bold border-b-4 border-teal-600 pb-[10px] pt-2"
             : "text-gray-500 font-medium hover:text-teal-600 py-2";
+    };
+
+    const handleLogout = () => {
+        logout();
+        navigate("/login", { replace: true });
     };
 
     return (
@@ -38,8 +54,8 @@ function MainLayout() {
                     {/* Derecha: Perfil + Acciones (desktop) */}
                     <div className="hidden md:flex items-center gap-2 sm:gap-4">
                         <Link to="/perfil" className="flex items-center gap-3 py-1.5 md:px-4 rounded-full md:bg-gray-50 md:border md:border-gray-200 md:hover:bg-gray-100 md:hover:border-gray-300 transition-colors cursor-pointer">
-                            <div className="w-8 h-8 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-[11px] font-bold">AG</div>
-                            <span className="text-sm font-medium text-gray-800 hidden md:block">Dr. Gonzalez</span>
+                            <div className="w-8 h-8 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-[11px] font-bold">{iniciales}</div>
+                            <span className="text-sm font-medium text-gray-800 hidden md:block">{profesionista?.nombre || "Usuario"}</span>
                         </Link>
 
                         <div className="w-px h-6 bg-gray-200 hidden sm:block"></div>
@@ -61,6 +77,7 @@ function MainLayout() {
                         </Link>
 
                         <button
+                            onClick={handleLogout}
                             className="p-2 rounded-full text-gray-600 hover:text-red-500 hover:bg-red-50 transition-colors"
                             title="Cerrar sesión"
                         >
@@ -115,8 +132,8 @@ function MainLayout() {
                                 onClick={() => setMenuAbierto(false)}
                                 className="flex items-center gap-3 px-3 py-2 rounded-lg hover:bg-gray-50"
                             >
-                                <div className="w-8 h-8 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-[11px] font-bold">AG</div>
-                                <span className="text-sm font-medium text-gray-800">Dr. Gonzalez</span>
+                                <div className="w-8 h-8 bg-teal-100 text-teal-600 rounded-full flex items-center justify-center text-[11px] font-bold">{iniciales}</div>
+                                <span className="text-sm font-medium text-gray-800">{profesionista?.nombre || "Usuario"}</span>
                             </Link>
 
                             <button
@@ -138,6 +155,7 @@ function MainLayout() {
                             </Link>
 
                             <button
+                                onClick={handleLogout}
                                 className="flex items-center gap-3 px-3 py-2 rounded-lg text-red-500 hover:bg-red-50 text-sm font-medium text-left"
                             >
                                 <LogOut size={18} /> Cerrar sesión

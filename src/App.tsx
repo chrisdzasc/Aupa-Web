@@ -7,15 +7,24 @@ import NuevoPaciente from './pages/NuevoPaciente';
 import DetallePaciente from "./pages/DetallePaciente";
 import FormularioMedicion from './pages/FormularioMedicion';
 import DetalleMedicion from './pages/DetalleMedicion';
+import RutaProtegida from "./components/RutaProtegida";
 import './index.css';
 
 function App() {
   return (
     <BrowserRouter>
       <Routes>
+        {/* Ruta pública */}
         <Route path='/login' element={<Login />} />
 
-        <Route element={<MainLayout />}>
+        {/* Rutas protegidas */}
+        <Route
+          element={
+            <RutaProtegida>
+              <MainLayout />
+            </RutaProtegida>
+          }
+        >
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/pacientes" element={<Pacientes />} />
           <Route path="/pacientes/nuevo" element={<NuevoPaciente />} />
@@ -25,6 +34,7 @@ function App() {
           <Route path="/pacientes/:id/mediciones/:idMedicion/editar" element={<FormularioMedicion />} />
         </Route>
 
+        {/* Cualquier otra ruta */}
         <Route path="*" element={<Navigate to="/login" />} />
       </Routes>
     </BrowserRouter>
