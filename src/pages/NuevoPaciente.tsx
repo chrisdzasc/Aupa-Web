@@ -1445,7 +1445,7 @@ function NuevoPaciente() {
                     set: setBraquial,
                   },
                   {
-                    label: "Pliegue tricipital (cm)",
+                    label: "Pliegue tricipital (mm)",
                     val: tricipital,
                     set: setTricipital,
                   },
