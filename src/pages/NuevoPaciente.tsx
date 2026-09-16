@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Stepper from "../components/nuevopaciente/Stepper";
 import InputChips from "../components/nuevopaciente/InputChips";
+import { crearPaciente } from "../services/paciente.service";
 
 interface ErroresPaso1 {
   nombre?: string;
@@ -45,6 +46,17 @@ interface ErroresPaso3 {
   tallaActual?: string;
   perimetroCefalicoConsulta?: string;
 }
+
+const mapearParentesco = (valor: string): string => {
+  const mapa: Record<string, string> = {
+    Madre: "MADRE",
+    Padre: "PADRE",
+    "Abuelo/a": "ABUELO",
+    "Tutor Legal": "TUTOR_LEGAL",
+    Otro: "OTRO",
+  };
+  return mapa[valor] || "OTRO";
+};
 
 function NuevoPaciente() {
   const navigate = useNavigate();
@@ -75,8 +87,9 @@ function NuevoPaciente() {
     cardiovascular: false,
     alergias: false,
   });
-  
-  const [otrosAntecedentesFamiliares, setOtrosAntecedentesFamiliares] = useState("");
+
+  const [otrosAntecedentesFamiliares, setOtrosAntecedentesFamiliares] =
+    useState("");
 
   const [alergias, setAlergias] = useState<string[]>([]);
   const [condicionesCronicas, setCondicionesCronicas] = useState<string[]>([]);
@@ -100,7 +113,8 @@ function NuevoPaciente() {
   const [fechaConsulta, setFechaConsulta] = useState(hoyStr);
   const [pesoActual, setPesoActual] = useState("");
   const [tallaActual, setTallaActual] = useState("");
-  const [perimetroCefalicoConsulta, setPerimetroCefalicoConsulta] = useState("");
+  const [perimetroCefalicoConsulta, setPerimetroCefalicoConsulta] =
+    useState("");
   const [cintura, setCintura] = useState("");
   const [abdomen, setAbdomen] = useState("");
   const [cadera, setCadera] = useState("");
@@ -113,6 +127,9 @@ function NuevoPaciente() {
   const [errores, setErrores] = useState<ErroresPaso1>({});
   const [erroresPaso2, setErroresPaso2] = useState<ErroresPaso2>({});
   const [erroresPaso3, setErroresPaso3] = useState<ErroresPaso3>({});
+
+  const [guardando, setGuardando] = useState(false);
+  const [errorServidor, setErrorServidor] = useState("");
 
   // Calcular edad en meses a partir de la fecha de nacimiento
   const calcularEdadMeses = (fecha: string): number | null => {
@@ -135,7 +152,10 @@ function NuevoPaciente() {
   const edadMeses = calcularEdadMeses(fechaNacimiento);
 
   // Calcular la edad precisa
-  const calcularEdadPrecisa = (nacimiento: string, consulta: string): string => {
+  const calcularEdadPrecisa = (
+    nacimiento: string,
+    consulta: string,
+  ): string => {
     if (!nacimiento || !consulta) return "";
 
     const [anioN, mesN, diaN] = nacimiento.split("-").map(Number);
@@ -152,7 +172,11 @@ function NuevoPaciente() {
 
     if (dias < 0) {
       meses--;
-      const ultimoDiaMesAnterior = new Date(fCon.getFullYear(), fCon.getMonth(), 0).getDate();
+      const ultimoDiaMesAnterior = new Date(
+        fCon.getFullYear(),
+        fCon.getMonth(),
+        0,
+      ).getDate();
       dias += ultimoDiaMesAnterior;
     }
 
@@ -175,7 +199,10 @@ function NuevoPaciente() {
 
   const edadEnConsulta = calcularEdadPrecisa(fechaNacimiento, fechaConsulta);
 
-  const calcularEdadMesesEnFecha = (nacimiento: string, consulta: string): number | null => {
+  const calcularEdadMesesEnFecha = (
+    nacimiento: string,
+    consulta: string,
+  ): number | null => {
     if (!nacimiento || !consulta) return null;
     const [anioN, mesN, diaN] = nacimiento.split("-").map(Number);
     const [anioC, mesC, diaC] = consulta.split("-").map(Number);
@@ -188,7 +215,10 @@ function NuevoPaciente() {
     return meses;
   };
 
-  const edadMesesEnConsulta = calcularEdadMesesEnFecha(fechaNacimiento, fechaConsulta);
+  const edadMesesEnConsulta = calcularEdadMesesEnFecha(
+    fechaNacimiento,
+    fechaConsulta,
+  );
 
   // Cálculo del Índice de Masa Corporal (IMC)
   const calcularIMC = (): string | null => {
@@ -253,10 +283,20 @@ function NuevoPaciente() {
 
   const opcionesComplementaria = () => {
     if (caso === 2) {
-      return ["A los 6 meses", "Antes de los 6 meses", "Después de los 6 meses", "Aún no inicia"];
+      return [
+        "A los 6 meses",
+        "Antes de los 6 meses",
+        "Después de los 6 meses",
+        "Aún no inicia",
+      ];
     }
     if (caso === 3) {
-      return ["A los 6 meses", "Antes de los 6 meses", "Después de los 6 meses", "No recuerda"];
+      return [
+        "A los 6 meses",
+        "Antes de los 6 meses",
+        "Después de los 6 meses",
+        "No recuerda",
+      ];
     }
     return [];
   };
@@ -301,7 +341,8 @@ function NuevoPaciente() {
       if (fechaNac > hoyLocal) {
         nuevosErrores.fechaNacimiento = "La fecha no puede ser futura";
       } else if (fechaNac < hace18) {
-        nuevosErrores.fechaNacimiento = "El paciente debe tener menos de 18 años";
+        nuevosErrores.fechaNacimiento =
+          "El paciente debe tener menos de 18 años";
       }
     }
 
@@ -322,7 +363,8 @@ function NuevoPaciente() {
     }
 
     if (perimetroCefalicoNacer.trim() && Number(perimetroCefalicoNacer) <= 0) {
-      nuevosErrores.perimetroCefalicoNacer = "El perímetro cefálico debe ser mayor a 0";
+      nuevosErrores.perimetroCefalicoNacer =
+        "El perímetro cefálico debe ser mayor a 0";
     }
 
     if (!tipoParto) {
@@ -351,7 +393,8 @@ function NuevoPaciente() {
     } else if (nombreTutor.length > 100) {
       nuevosErrores.nombreTutor = "El nombre no puede exceder 100 caracteres";
     } else if (!/^[a-zA-ZáéíóúÁÉÍÓÚñÑüÜ\s]+$/.test(nombreTutor)) {
-      nuevosErrores.nombreTutor = "El nombre solo puede contener letras y espacios";
+      nuevosErrores.nombreTutor =
+        "El nombre solo puede contener letras y espacios";
     }
 
     if (!parentesco) {
@@ -390,7 +433,8 @@ function NuevoPaciente() {
       if (fechaConsulta > hoyStr) {
         nuevosErrores.fechaConsulta = "La fecha no puede ser futura";
       } else if (fechaNacimiento && fechaConsulta < fechaNacimiento) {
-        nuevosErrores.fechaConsulta = "La fecha no puede ser anterior al nacimiento";
+        nuevosErrores.fechaConsulta =
+          "La fecha no puede ser anterior al nacimiento";
       }
     }
 
@@ -415,7 +459,8 @@ function NuevoPaciente() {
     if (perimetroCefalicoConsulta.trim()) {
       const perimetroNum = Number(perimetroCefalicoConsulta);
       if (isNaN(perimetroNum) || perimetroNum <= 0) {
-        nuevosErrores.perimetroCefalicoConsulta = "El perímetro debe ser mayor a 0";
+        nuevosErrores.perimetroCefalicoConsulta =
+          "El perímetro debe ser mayor a 0";
       } else if (perimetroNum > 70) {
         nuevosErrores.perimetroCefalicoConsulta = "Excede el límite clínico";
       }
@@ -439,20 +484,134 @@ function NuevoPaciente() {
     }
   };
 
-  const handleGuardarFinal = () => {
-    if (validarPaso3()) {
-      alert("Listo para enviar al Backend");
+  const construirPayload = () => {
+    // Convertir string vacío a undefined, o a número si tiene valor
+    const num = (valor: string) =>
+      valor.trim() === "" ? undefined : Number(valor);
+
+    // Alertas: unir alergias y condiciones crónicas con su tipo
+    const alertas = [
+      ...alergias.map((descripcion) => ({
+        descripcion,
+        tipo: "ALERGIA" as const,
+      })),
+      ...condicionesCronicas.map((descripcion) => ({
+        descripcion,
+        tipo: "CONDICION_CRONICA" as const,
+      })),
+    ];
+
+    // Antecedentes familiares: convertir los checkboxes marcados en un arreglo
+    const etiquetasAntecedentes: Record<string, string> = {
+      diabetes: "Diabetes",
+      hipertension: "Hipertensión",
+      obesidad: "Obesidad",
+      cardiovascular: "Enfermedad cardiovascular",
+      alergias: "Alergias",
+    };
+
+    const antecedentes = Object.entries(antecedentesFamiliares)
+      .filter(([, marcado]) => marcado)
+      .map(([clave]) => ({
+        condicion: etiquetasAntecedentes[clave],
+        detalle: otrosAntecedentesFamiliares.trim() || undefined,
+      }));
+
+    return {
+      nombre: nombre.trim(),
+      sexo: sexo as "M" | "F",
+      fechaNacimiento,
+      semanasGestacion: semanasGestacion ? Number(semanasGestacion) : undefined,
+      tipoParto:
+        tipoParto === "Vaginal"
+          ? ("VAGINAL" as const)
+          : tipoParto === "Cesarea"
+            ? ("CESAREA" as const)
+            : undefined,
+      pesoNacerKg: num(pesoNacer),
+      tallaNacerCm: num(tallaNacer),
+      perimetroCefalicoNacerCm: num(perimetroCefalicoNacer),
+      tipoAlimentacion: tipoAlimentacion || undefined,
+      inicioComplementaria: inicioComplementaria || undefined,
+      observaciones: observaciones.trim() || undefined,
+
+      tutor: {
+        nombre: nombreTutor.trim(),
+        parentesco: mapearParentesco(parentesco),
+        telefono,
+        email: email.trim(),
+        generarAcceso: accesoAppMovil,
+      },
+
+      alertas: alertas.length ? alertas : undefined,
+      antecedentesFamiliares: antecedentes.length ? antecedentes : undefined,
+
+      medicionInicial: {
+        fechaConsulta,
+        pesoKg: Number(pesoActual),
+        tallaCm: Number(tallaActual),
+        perimetroCefalicoCm: num(perimetroCefalicoConsulta),
+        perimetroBraquialCm: num(braquial),
+        cinturaCm: num(cintura),
+        abdomenCm: num(abdomen),
+        caderaCm: num(cadera),
+        pantorrillaCm: num(pantorrilla),
+        tricipitalMm: num(tricipital),
+        notas: notasConsulta.trim() || undefined,
+      },
+    };
+  };
+
+  const handleGuardarFinal = async () => {
+    if (!validarPaso3()) return;
+
+    setGuardando(true);
+    setErrorServidor("");
+
+    try {
+      const payload = construirPayload();
+      const respuesta = await crearPaciente(payload);
+
+      // Si se generaron credenciales para el tutor, las mostramos
+      if (respuesta.credencialesTutor) {
+        alert(
+          `Paciente registrado correctamente.\n\n` +
+            `Credenciales del tutor:\n` +
+            `Correo: ${respuesta.credencialesTutor.email}\n` +
+            `Contraseña temporal: ${respuesta.credencialesTutor.passwordTemporal}\n\n` +
+            `Anota estas credenciales, solo se muestran una vez.`,
+        );
+      } else {
+        alert("Paciente registrado correctamente");
+      }
+
       navigate("/pacientes");
+    } catch (error) {
+      const mensaje =
+        error instanceof Error
+          ? error.message
+          : "Error al registrar el paciente";
+      setErrorServidor(mensaje);
+    } finally {
+      setGuardando(false);
     }
   };
 
   const inputClass = (error?: string) =>
     `w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${
-      error ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500"
+      error
+        ? "border-red-400 focus:border-red-500"
+        : "border-gray-200 focus:border-teal-500"
     }`;
 
   // Encabezado de tarjeta con ícono
-  const CardHeader = ({ icon: Icon, titulo }: { icon: any; titulo: string }) => (
+  const CardHeader = ({
+    icon: Icon,
+    titulo,
+  }: {
+    icon: any;
+    titulo: string;
+  }) => (
     <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
       <Icon size={20} className="text-teal-600" />
       {titulo}
@@ -461,7 +620,10 @@ function NuevoPaciente() {
 
   return (
     <div className="max-w-3xl mx-auto pb-28">
-      <Link to="/pacientes" className="text-teal-600 text-sm hover:underline mb-4 inline-block">
+      <Link
+        to="/pacientes"
+        className="text-teal-600 text-sm hover:underline mb-4 inline-block"
+      >
         &larr; Volver a pacientes
       </Link>
 
@@ -485,12 +647,15 @@ function NuevoPaciente() {
                 value={nombre}
                 onChange={(e) => {
                   setNombre(e.target.value);
-                  if (errores.nombre) setErrores({ ...errores, nombre: undefined });
+                  if (errores.nombre)
+                    setErrores({ ...errores, nombre: undefined });
                 }}
                 placeholder="Ej. Mateo García López"
                 className={inputClass(errores.nombre)}
               />
-              {errores.nombre && <p className="text-xs text-red-500 mt-1">{errores.nombre}</p>}
+              {errores.nombre && (
+                <p className="text-xs text-red-500 mt-1">{errores.nombre}</p>
+              )}
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -502,7 +667,8 @@ function NuevoPaciente() {
                   value={sexo}
                   onChange={(e) => {
                     setSexo(e.target.value);
-                    if (errores.sexo) setErrores({ ...errores, sexo: undefined });
+                    if (errores.sexo)
+                      setErrores({ ...errores, sexo: undefined });
                   }}
                   className={inputClass(errores.sexo) + " bg-white"}
                 >
@@ -510,7 +676,9 @@ function NuevoPaciente() {
                   <option value="M">Masculino</option>
                   <option value="F">Femenino</option>
                 </select>
-                {errores.sexo && <p className="text-xs text-red-500 mt-1">{errores.sexo}</p>}
+                {errores.sexo && (
+                  <p className="text-xs text-red-500 mt-1">{errores.sexo}</p>
+                )}
               </div>
 
               <div>
@@ -528,7 +696,9 @@ function NuevoPaciente() {
                   className={inputClass(errores.fechaNacimiento)}
                 />
                 {errores.fechaNacimiento && (
-                  <p className="text-xs text-red-500 mt-1">{errores.fechaNacimiento}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errores.fechaNacimiento}
+                  </p>
                 )}
                 {edadMeses !== null && edadMeses >= 0 && (
                   <p className="text-xs text-teal-600 mt-1">
@@ -558,14 +728,18 @@ function NuevoPaciente() {
                   className={inputClass(errores.semanasGestacion) + " bg-white"}
                 >
                   <option value="">Seleccionar</option>
-                  {Array.from({ length: 19 }, (_, i) => 24 + i).map((semana) => (
-                    <option key={semana} value={semana}>
-                      {semana} semanas
-                    </option>
-                  ))}
+                  {Array.from({ length: 19 }, (_, i) => 24 + i).map(
+                    (semana) => (
+                      <option key={semana} value={semana}>
+                        {semana} semanas
+                      </option>
+                    ),
+                  )}
                 </select>
                 {errores.semanasGestacion && (
-                  <p className="text-xs text-red-500 mt-1">{errores.semanasGestacion}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errores.semanasGestacion}
+                  </p>
                 )}
               </div>
 
@@ -577,7 +751,8 @@ function NuevoPaciente() {
                   value={tipoParto}
                   onChange={(e) => {
                     setTipoParto(e.target.value);
-                    if (errores.tipoParto) setErrores({ ...errores, tipoParto: undefined });
+                    if (errores.tipoParto)
+                      setErrores({ ...errores, tipoParto: undefined });
                   }}
                   className={inputClass(errores.tipoParto) + " bg-white"}
                 >
@@ -586,7 +761,9 @@ function NuevoPaciente() {
                   <option value="Cesarea">Cesárea</option>
                 </select>
                 {errores.tipoParto && (
-                  <p className="text-xs text-red-500 mt-1">{errores.tipoParto}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errores.tipoParto}
+                  </p>
                 )}
               </div>
             </div>
@@ -601,9 +778,13 @@ function NuevoPaciente() {
                   inputMode="decimal"
                   value={pesoNacer}
                   onChange={(e) => {
-                    if (e.target.value === "" || regexPeso.test(e.target.value)) {
+                    if (
+                      e.target.value === "" ||
+                      regexPeso.test(e.target.value)
+                    ) {
                       setPesoNacer(e.target.value);
-                      if (errores.pesoNacer) setErrores({ ...errores, pesoNacer: undefined });
+                      if (errores.pesoNacer)
+                        setErrores({ ...errores, pesoNacer: undefined });
                     }
                   }}
                   onBlur={() => formatearNumero(pesoNacer, setPesoNacer)}
@@ -611,7 +792,9 @@ function NuevoPaciente() {
                   className={inputClass(errores.pesoNacer)}
                 />
                 {errores.pesoNacer && (
-                  <p className="text-xs text-red-500 mt-1">{errores.pesoNacer}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errores.pesoNacer}
+                  </p>
                 )}
               </div>
 
@@ -624,9 +807,13 @@ function NuevoPaciente() {
                   inputMode="decimal"
                   value={tallaNacer}
                   onChange={(e) => {
-                    if (e.target.value === "" || regexTalla.test(e.target.value)) {
+                    if (
+                      e.target.value === "" ||
+                      regexTalla.test(e.target.value)
+                    ) {
                       setTallaNacer(e.target.value);
-                      if (errores.tallaNacer) setErrores({ ...errores, tallaNacer: undefined });
+                      if (errores.tallaNacer)
+                        setErrores({ ...errores, tallaNacer: undefined });
                     }
                   }}
                   onBlur={() => formatearNumero(tallaNacer, setTallaNacer)}
@@ -634,7 +821,9 @@ function NuevoPaciente() {
                   className={inputClass(errores.tallaNacer)}
                 />
                 {errores.tallaNacer && (
-                  <p className="text-xs text-red-500 mt-1">{errores.tallaNacer}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errores.tallaNacer}
+                  </p>
                 )}
               </div>
 
@@ -647,18 +836,31 @@ function NuevoPaciente() {
                   inputMode="decimal"
                   value={perimetroCefalicoNacer}
                   onChange={(e) => {
-                    if (e.target.value === "" || regexTalla.test(e.target.value)) {
+                    if (
+                      e.target.value === "" ||
+                      regexTalla.test(e.target.value)
+                    ) {
                       setPerimetroCefalicoNacer(e.target.value);
                       if (errores.perimetroCefalicoNacer)
-                        setErrores({ ...errores, perimetroCefalicoNacer: undefined });
+                        setErrores({
+                          ...errores,
+                          perimetroCefalicoNacer: undefined,
+                        });
                     }
                   }}
-                  onBlur={() => formatearNumero(perimetroCefalicoNacer, setPerimetroCefalicoNacer)}
+                  onBlur={() =>
+                    formatearNumero(
+                      perimetroCefalicoNacer,
+                      setPerimetroCefalicoNacer,
+                    )
+                  }
                   placeholder="0.0"
                   className={inputClass(errores.perimetroCefalicoNacer)}
                 />
                 {errores.perimetroCefalicoNacer && (
-                  <p className="text-xs text-red-500 mt-1">{errores.perimetroCefalicoNacer}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {errores.perimetroCefalicoNacer}
+                  </p>
                 )}
               </div>
             </div>
@@ -667,12 +869,16 @@ function NuevoPaciente() {
           {/* Sección 3: Antecedentes Nutricionales (dinámico) */}
           {caso !== null && (
             <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-              <CardHeader icon={HeartPulse} titulo="Antecedentes Nutricionales" />
+              <CardHeader
+                icon={HeartPulse}
+                titulo="Antecedentes Nutricionales"
+              />
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {etiquetaAlimentacion()}<span className="text-red-500">*</span>
+                    {etiquetaAlimentacion()}
+                    <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={tipoAlimentacion}
@@ -681,7 +887,9 @@ function NuevoPaciente() {
                       if (errores.tipoAlimentacion)
                         setErrores({ ...errores, tipoAlimentacion: undefined });
                     }}
-                    className={inputClass(errores.tipoAlimentacion) + " bg-white"}
+                    className={
+                      inputClass(errores.tipoAlimentacion) + " bg-white"
+                    }
                   >
                     <option value="">Seleccionar</option>
                     {opcionesAlimentacion().map((op) => (
@@ -691,23 +899,31 @@ function NuevoPaciente() {
                     ))}
                   </select>
                   {errores.tipoAlimentacion && (
-                    <p className="text-xs text-red-500 mt-1">{errores.tipoAlimentacion}</p>
+                    <p className="text-xs text-red-500 mt-1">
+                      {errores.tipoAlimentacion}
+                    </p>
                   )}
                 </div>
 
                 {(caso === 2 || caso === 3) && (
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
-                      {etiquetaComplementaria()}<span className="text-red-500">*</span>
+                      {etiquetaComplementaria()}
+                      <span className="text-red-500">*</span>
                     </label>
                     <select
                       value={inicioComplementaria}
                       onChange={(e) => {
                         setInicioComplementaria(e.target.value);
                         if (errores.inicioComplementaria)
-                          setErrores({ ...errores, inicioComplementaria: undefined });
+                          setErrores({
+                            ...errores,
+                            inicioComplementaria: undefined,
+                          });
                       }}
-                      className={inputClass(errores.inicioComplementaria) + " bg-white"}
+                      className={
+                        inputClass(errores.inicioComplementaria) + " bg-white"
+                      }
                     >
                       <option value="">Seleccionar</option>
                       {opcionesComplementaria().map((op) => (
@@ -717,7 +933,9 @@ function NuevoPaciente() {
                       ))}
                     </select>
                     {errores.inicioComplementaria && (
-                      <p className="text-xs text-red-500 mt-1">{errores.inicioComplementaria}</p>
+                      <p className="text-xs text-red-500 mt-1">
+                        {errores.inicioComplementaria}
+                      </p>
                     )}
                   </div>
                 )}
@@ -725,7 +943,8 @@ function NuevoPaciente() {
                 {caso === 1 && (
                   <div className="flex items-end">
                     <p className="text-xs text-gray-400 italic bg-gray-50 rounded-lg px-3 py-2 w-full">
-                      La introducción de alimentos sólidos no aplica para la edad actual
+                      La introducción de alimentos sólidos no aplica para la
+                      edad actual
                     </p>
                   </div>
                 )}
@@ -737,7 +956,8 @@ function NuevoPaciente() {
           <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
             <CardHeader icon={TriangleAlert} titulo="Alertas Médicas" />
             <p className="text-sm text-gray-500 mb-4 -mt-2">
-              Registra alergias críticas y condiciones crónicas del paciente. Aparecerán destacadas en su expediente.
+              Registra alergias críticas y condiciones crónicas del paciente.
+              Aparecerán destacadas en su expediente.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -782,11 +1002,16 @@ function NuevoPaciente() {
                 { clave: "cardiovascular", etiqueta: "Enf. Cardiovascular" },
                 { clave: "alergias", etiqueta: "Alergias" },
               ].map((item) => (
-                <label key={item.clave} className="flex items-center gap-2 cursor-pointer">
+                <label
+                  key={item.clave}
+                  className="flex items-center gap-2 cursor-pointer"
+                >
                   <input
                     type="checkbox"
                     checked={
-                      antecedentesFamiliares[item.clave as keyof typeof antecedentesFamiliares]
+                      antecedentesFamiliares[
+                        item.clave as keyof typeof antecedentesFamiliares
+                      ]
                     }
                     onChange={(e) =>
                       setAntecedentesFamiliares({
@@ -818,7 +1043,10 @@ function NuevoPaciente() {
 
           {/* Sección 5: Notas */}
           <div className="bg-white rounded-xl border border-gray-200 p-6 mb-6">
-            <CardHeader icon={ClipboardList} titulo="Notas y antecedentes clínicos" />
+            <CardHeader
+              icon={ClipboardList}
+              titulo="Notas y antecedentes clínicos"
+            />
 
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Observaciones del expediente
@@ -852,13 +1080,18 @@ function NuevoPaciente() {
                   onChange={(e) => {
                     setNombreTutor(e.target.value);
                     if (erroresPaso2.nombreTutor)
-                      setErroresPaso2({ ...erroresPaso2, nombreTutor: undefined });
+                      setErroresPaso2({
+                        ...erroresPaso2,
+                        nombreTutor: undefined,
+                      });
                   }}
                   placeholder="Ej. María López García"
                   className={inputClass(erroresPaso2.nombreTutor)}
                 />
                 {erroresPaso2.nombreTutor && (
-                  <p className="text-xs text-red-500 mt-1">{erroresPaso2.nombreTutor}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {erroresPaso2.nombreTutor}
+                  </p>
                 )}
               </div>
 
@@ -871,7 +1104,10 @@ function NuevoPaciente() {
                   onChange={(e) => {
                     setParentesco(e.target.value);
                     if (erroresPaso2.parentesco)
-                      setErroresPaso2({ ...erroresPaso2, parentesco: undefined });
+                      setErroresPaso2({
+                        ...erroresPaso2,
+                        parentesco: undefined,
+                      });
                   }}
                   className={inputClass(erroresPaso2.parentesco) + " bg-white"}
                 >
@@ -883,7 +1119,9 @@ function NuevoPaciente() {
                   <option value="Otro">Otro</option>
                 </select>
                 {erroresPaso2.parentesco && (
-                  <p className="text-xs text-red-500 mt-1">{erroresPaso2.parentesco}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {erroresPaso2.parentesco}
+                  </p>
                 )}
               </div>
             </div>
@@ -905,22 +1143,30 @@ function NuevoPaciente() {
                     telefono.length <= 2
                       ? telefono
                       : telefono.length <= 6
-                      ? `${telefono.slice(0, 2)} ${telefono.slice(2)}`
-                      : `${telefono.slice(0, 2)} ${telefono.slice(2, 6)} ${telefono.slice(6)}`
+                        ? `${telefono.slice(0, 2)} ${telefono.slice(2)}`
+                        : `${telefono.slice(0, 2)} ${telefono.slice(2, 6)} ${telefono.slice(6)}`
                   }
                   onChange={(e) => {
                     const valor = e.target.value.replace(/\s/g, "");
-                    if (valor === "" || (/^\d+$/.test(valor) && valor.length <= 10)) {
+                    if (
+                      valor === "" ||
+                      (/^\d+$/.test(valor) && valor.length <= 10)
+                    ) {
                       setTelefono(valor);
                       if (erroresPaso2.telefono)
-                        setErroresPaso2({ ...erroresPaso2, telefono: undefined });
+                        setErroresPaso2({
+                          ...erroresPaso2,
+                          telefono: undefined,
+                        });
                     }
                   }}
                   placeholder="33 1234 5678"
                   className={inputClass(erroresPaso2.telefono)}
                 />
                 {erroresPaso2.telefono && (
-                  <p className="text-xs text-red-500 mt-1">{erroresPaso2.telefono}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {erroresPaso2.telefono}
+                  </p>
                 )}
               </div>
 
@@ -933,13 +1179,16 @@ function NuevoPaciente() {
                   value={email}
                   onChange={(e) => {
                     setEmail(e.target.value);
-                    if (erroresPaso2.email) setErroresPaso2({ ...erroresPaso2, email: undefined });
+                    if (erroresPaso2.email)
+                      setErroresPaso2({ ...erroresPaso2, email: undefined });
                   }}
                   placeholder="correo@ejemplo.com"
                   className={inputClass(erroresPaso2.email)}
                 />
                 {erroresPaso2.email && (
-                  <p className="text-xs text-red-500 mt-1">{erroresPaso2.email}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {erroresPaso2.email}
+                  </p>
                 )}
               </div>
             </div>
@@ -960,20 +1209,26 @@ function NuevoPaciente() {
                 onChange={(e) => {
                   setAccesoAppMovil(e.target.checked);
                   if (erroresPaso2.accesoAppMovil)
-                    setErroresPaso2({ ...erroresPaso2, accesoAppMovil: undefined });
+                    setErroresPaso2({
+                      ...erroresPaso2,
+                      accesoAppMovil: undefined,
+                    });
                 }}
                 className="mt-1 w-4 h-4 accent-teal-600 cursor-pointer"
               />
               <div>
                 <p className="text-sm font-medium text-gray-700">
-                  Generar acceso a la App Móvil y enviar credenciales temporales por correo
+                  Generar acceso a la App Móvil y enviar credenciales temporales
+                  por correo
                 </p>
                 <p className="text-xs text-gray-500 mt-1">
-                  El sistema autogenerará una contraseña segura y obligará al tutor a cambiarla en su
-                  primer inicio de sesión.
+                  El sistema autogenerará una contraseña segura y obligará al
+                  tutor a cambiarla en su primer inicio de sesión.
                 </p>
                 {erroresPaso2.accesoAppMovil && (
-                  <p className="text-xs text-red-500 mt-2">{erroresPaso2.accesoAppMovil}</p>
+                  <p className="text-xs text-red-500 mt-2">
+                    {erroresPaso2.accesoAppMovil}
+                  </p>
                 )}
               </div>
             </label>
@@ -997,12 +1252,17 @@ function NuevoPaciente() {
                 onChange={(e) => {
                   setFechaConsulta(e.target.value);
                   if (erroresPaso3.fechaConsulta)
-                    setErroresPaso3({ ...erroresPaso3, fechaConsulta: undefined });
+                    setErroresPaso3({
+                      ...erroresPaso3,
+                      fechaConsulta: undefined,
+                    });
                 }}
                 className={inputClass(erroresPaso3.fechaConsulta)}
               />
               {erroresPaso3.fechaConsulta && (
-                <p className="text-xs text-red-500 mt-1">{erroresPaso3.fechaConsulta}</p>
+                <p className="text-xs text-red-500 mt-1">
+                  {erroresPaso3.fechaConsulta}
+                </p>
               )}
             </div>
           </div>
@@ -1021,10 +1281,16 @@ function NuevoPaciente() {
                   inputMode="decimal"
                   value={pesoActual}
                   onChange={(e) => {
-                    if (e.target.value === "" || regexPeso.test(e.target.value)) {
+                    if (
+                      e.target.value === "" ||
+                      regexPeso.test(e.target.value)
+                    ) {
                       setPesoActual(e.target.value);
                       if (erroresPaso3.pesoActual)
-                        setErroresPaso3({ ...erroresPaso3, pesoActual: undefined });
+                        setErroresPaso3({
+                          ...erroresPaso3,
+                          pesoActual: undefined,
+                        });
                     }
                   }}
                   onBlur={() => formatearNumero(pesoActual, setPesoActual)}
@@ -1032,23 +1298,32 @@ function NuevoPaciente() {
                   className={inputClass(erroresPaso3.pesoActual)}
                 />
                 {erroresPaso3.pesoActual && (
-                  <p className="text-xs text-red-500 mt-1">{erroresPaso3.pesoActual}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {erroresPaso3.pesoActual}
+                  </p>
                 )}
               </div>
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  {etiquetaTalla}<span className="text-red-500">*</span>
+                  {etiquetaTalla}
+                  <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="text"
                   inputMode="decimal"
                   value={tallaActual}
                   onChange={(e) => {
-                    if (e.target.value === "" || regexTallaConsulta.test(e.target.value)) {
+                    if (
+                      e.target.value === "" ||
+                      regexTallaConsulta.test(e.target.value)
+                    ) {
                       setTallaActual(e.target.value);
                       if (erroresPaso3.tallaActual)
-                        setErroresPaso3({ ...erroresPaso3, tallaActual: undefined });
+                        setErroresPaso3({
+                          ...erroresPaso3,
+                          tallaActual: undefined,
+                        });
                     }
                   }}
                   onBlur={() => formatearNumero(tallaActual, setTallaActual)}
@@ -1056,7 +1331,9 @@ function NuevoPaciente() {
                   className={inputClass(erroresPaso3.tallaActual)}
                 />
                 {erroresPaso3.tallaActual && (
-                  <p className="text-xs text-red-500 mt-1">{erroresPaso3.tallaActual}</p>
+                  <p className="text-xs text-red-500 mt-1">
+                    {erroresPaso3.tallaActual}
+                  </p>
                 )}
               </div>
 
@@ -1069,14 +1346,23 @@ function NuevoPaciente() {
                   inputMode="decimal"
                   value={perimetroCefalicoConsulta}
                   onChange={(e) => {
-                    if (e.target.value === "" || regexTallaConsulta.test(e.target.value)) {
+                    if (
+                      e.target.value === "" ||
+                      regexTallaConsulta.test(e.target.value)
+                    ) {
                       setPerimetroCefalicoConsulta(e.target.value);
                       if (erroresPaso3.perimetroCefalicoConsulta)
-                        setErroresPaso3({ ...erroresPaso3, perimetroCefalicoConsulta: undefined });
+                        setErroresPaso3({
+                          ...erroresPaso3,
+                          perimetroCefalicoConsulta: undefined,
+                        });
                     }
                   }}
                   onBlur={() =>
-                    formatearNumero(perimetroCefalicoConsulta, setPerimetroCefalicoConsulta)
+                    formatearNumero(
+                      perimetroCefalicoConsulta,
+                      setPerimetroCefalicoConsulta,
+                    )
                   }
                   placeholder="0.0"
                   className={inputClass(erroresPaso3.perimetroCefalicoConsulta)}
@@ -1102,7 +1388,10 @@ function NuevoPaciente() {
                 <p className="text-xs text-gray-500 mb-1">IMC calculado</p>
                 {imcCalculado ? (
                   <p className="text-3xl font-bold text-teal-700">
-                    {imcCalculado} <span className="text-sm font-normal text-gray-500">kg/m²</span>
+                    {imcCalculado}{" "}
+                    <span className="text-sm font-normal text-gray-500">
+                      kg/m²
+                    </span>
                   </p>
                 ) : (
                   <p className="text-sm text-gray-400 mt-2">
@@ -1112,11 +1401,17 @@ function NuevoPaciente() {
               </div>
 
               <div>
-                <p className="text-xs text-gray-500 mb-1">Edad en la consulta</p>
+                <p className="text-xs text-gray-500 mb-1">
+                  Edad en la consulta
+                </p>
                 {edadEnConsulta ? (
-                  <p className="text-lg font-bold text-teal-700 mt-1">{edadEnConsulta}</p>
+                  <p className="text-lg font-bold text-teal-700 mt-1">
+                    {edadEnConsulta}
+                  </p>
                 ) : (
-                  <p className="text-sm text-gray-400 mt-2">Selecciona una fecha válida</p>
+                  <p className="text-sm text-gray-400 mt-2">
+                    Selecciona una fecha válida
+                  </p>
                 )}
               </div>
             </div>
@@ -1139,9 +1434,21 @@ function NuevoPaciente() {
                   { label: "Cintura (cm)", val: cintura, set: setCintura },
                   { label: "Abdomen (cm)", val: abdomen, set: setAbdomen },
                   { label: "Cadera (cm)", val: cadera, set: setCadera },
-                  { label: "Pantorrilla (cm)", val: pantorrilla, set: setPantorrilla },
-                  { label: "Perímetro braquial (cm)", val: braquial, set: setBraquial },
-                  { label: "Pliegue tricipital (cm)", val: tricipital, set: setTricipital },
+                  {
+                    label: "Pantorrilla (cm)",
+                    val: pantorrilla,
+                    set: setPantorrilla,
+                  },
+                  {
+                    label: "Perímetro braquial (cm)",
+                    val: braquial,
+                    set: setBraquial,
+                  },
+                  {
+                    label: "Pliegue tricipital (cm)",
+                    val: tricipital,
+                    set: setTricipital,
+                  },
                 ].map((campo) => (
                   <div key={campo.label}>
                     <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -1152,7 +1459,10 @@ function NuevoPaciente() {
                       inputMode="decimal"
                       value={campo.val}
                       onChange={(e) => {
-                        if (e.target.value === "" || regexTallaConsulta.test(e.target.value)) {
+                        if (
+                          e.target.value === "" ||
+                          regexTallaConsulta.test(e.target.value)
+                        ) {
                           campo.set(e.target.value);
                         }
                       }}
@@ -1180,6 +1490,12 @@ function NuevoPaciente() {
             />
           </div>
         </>
+      )}
+
+      {errorServidor && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6">
+          <p className="text-sm text-red-700">{errorServidor}</p>
+        </div>
       )}
 
       {/* Barra de acción fija abajo */}
@@ -1226,9 +1542,10 @@ function NuevoPaciente() {
           {pasoActual === 3 && (
             <button
               onClick={handleGuardarFinal}
-              className="px-6 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors shadow-sm"
+              disabled={guardando}
+              className="px-6 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:bg-teal-400 disabled:cursor-not-allowed transition-colors shadow-sm"
             >
-              Guardar Expediente y Consulta
+              {guardando ? "Guardando..." : "Guardar Expediente y Consulta"}
             </button>
           )}
         </div>
