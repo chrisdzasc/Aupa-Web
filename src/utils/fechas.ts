@@ -1,12 +1,21 @@
+// Separa una fecha "YYYY-MM-DD" en sus partes numéricas.
+// El slice(0, 10) tolera también el formato largo "2024-03-10T00:00:00.000Z".
+// Nunca se usa new Date(fecha) porque el navegador interpretaría esa cadena
+// como medianoche UTC y en México mostraría el día anterior.
+const partesFecha = (fecha: string) => {
+  const [anio, mes, dia] = fecha.slice(0, 10).split("-").map(Number);
+  return { anio, mes, dia };
+};
+
 // Calcula la edad a partir de la fecha de nacimiento y la devuelve legible
 export const calcularEdad = (fechaNacimiento: string): string => {
-  const nacimiento = new Date(fechaNacimiento);
+  const { anio, mes, dia } = partesFecha(fechaNacimiento);
   const hoy = new Date();
 
-  let anios = hoy.getFullYear() - nacimiento.getFullYear();
-  let meses = hoy.getMonth() - nacimiento.getMonth();
+  let anios = hoy.getFullYear() - anio;
+  let meses = hoy.getMonth() + 1 - mes;
 
-  if (hoy.getDate() < nacimiento.getDate()) {
+  if (hoy.getDate() < dia) {
     meses--;
   }
 
@@ -26,11 +35,11 @@ export const calcularEdad = (fechaNacimiento: string): string => {
   return `${anios} ${anios === 1 ? "año" : "años"}, ${meses} ${meses === 1 ? "mes" : "meses"}`;
 };
 
-// Formatea una fecha ISO a "15 Sep 2026"
+// Formatea una fecha "2026-09-15" a "15 Sep 2026"
 export const formatearFecha = (fecha: string | null | undefined): string => {
   if (!fecha) return "Sin consultas";
 
-  const d = new Date(fecha);
+  const { anio, mes, dia } = partesFecha(fecha);
   const meses = [
     "Ene",
     "Feb",
@@ -46,7 +55,7 @@ export const formatearFecha = (fecha: string | null | undefined): string => {
     "Dic",
   ];
 
-  return `${String(d.getDate()).padStart(2, "0")} ${meses[d.getMonth()]} ${d.getFullYear()}`;
+  return `${String(dia).padStart(2, "0")} ${meses[mes - 1]} ${anio}`;
 };
 
 // Obtiene las iniciales de un nombre completo
