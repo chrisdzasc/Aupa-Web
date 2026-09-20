@@ -50,6 +50,66 @@ export const calcularEdadMeses = (fechaNacimiento: string): number => {
   return Math.max(0, meses);
 };
 
+// Edad exacta entre dos fechas, para mostrar la edad que tenía el
+// paciente el día de la consulta
+export const calcularEdadEnFecha = (
+  fechaNacimiento: string,
+  fechaConsulta: string,
+): string => {
+  const nac = partesFecha(fechaNacimiento);
+  const con = partesFecha(fechaConsulta);
+
+  let anios = con.anio - nac.anio;
+  let meses = con.mes - nac.mes;
+  let dias = con.dia - nac.dia;
+
+  if (dias < 0) {
+    meses--;
+    // Día 0 del mes actual = último día del mes anterior
+    dias += new Date(con.anio, con.mes - 1, 0).getDate();
+  }
+
+  if (meses < 0) {
+    anios--;
+    meses += 12;
+  }
+
+  const partes: string[] = [];
+  if (anios > 0) partes.push(`${anios} ${anios === 1 ? "año" : "años"}`);
+  if (meses > 0) partes.push(`${meses} ${meses === 1 ? "mes" : "meses"}`);
+  if (dias > 0) partes.push(`${dias} ${dias === 1 ? "día" : "días"}`);
+
+  if (partes.length === 0) return "Recién nacido";
+  if (partes.length === 1) return partes[0];
+  if (partes.length === 2) return `${partes[0]} y ${partes[1]}`;
+  return `${partes[0]}, ${partes[1]} y ${partes[2]}`;
+};
+
+// Formatea una marca de tiempo completa a "15 Sep 2026, 19:24".
+// A diferencia de formatearFecha, aquí SÍ se usa new Date() porque
+// createdAt y updatedAt son momentos exactos y deben verse en hora local.
+export const formatearFechaHora = (fecha: string): string => {
+  const d = new Date(fecha);
+  const meses = [
+    "Ene",
+    "Feb",
+    "Mar",
+    "Abr",
+    "May",
+    "Jun",
+    "Jul",
+    "Ago",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dic",
+  ];
+  const hora = String(d.getHours()).padStart(2, "0");
+  const minuto = String(d.getMinutes()).padStart(2, "0");
+
+  return `${String(d.getDate()).padStart(2, "0")} ${meses[d.getMonth()]} ${d.getFullYear()}, ${hora}:${minuto}`;
+};
+
 // Formatea una fecha "2026-09-15" a "15 Sep 2026"
 export const formatearFecha = (fecha: string | null | undefined): string => {
   if (!fecha) return "Sin consultas";
