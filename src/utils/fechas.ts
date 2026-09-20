@@ -35,6 +35,21 @@ export const calcularEdad = (fechaNacimiento: string): string => {
   return `${anios} ${anios === 1 ? "año" : "años"}, ${meses} ${meses === 1 ? "mes" : "meses"}`;
 };
 
+// Calcula la edad en meses cumplidos, que es la unidad que usan
+// los estándares de crecimiento de la OMS
+export const calcularEdadMeses = (fechaNacimiento: string): number => {
+  const { anio, mes, dia } = partesFecha(fechaNacimiento);
+  const hoy = new Date();
+
+  let meses = (hoy.getFullYear() - anio) * 12 + (hoy.getMonth() + 1 - mes);
+
+  if (hoy.getDate() < dia) {
+    meses--;
+  }
+
+  return Math.max(0, meses);
+};
+
 // Formatea una fecha "2026-09-15" a "15 Sep 2026"
 export const formatearFecha = (fecha: string | null | undefined): string => {
   if (!fecha) return "Sin consultas";
