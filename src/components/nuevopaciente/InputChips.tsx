@@ -14,7 +14,7 @@ function InputChips({
   onChange,
   placeholder = "Escribe y presiona Enter",
   colorChip = "rojo",
-  maxLength = 40,
+  maxLength = 100,
 }: InputChipsProps) {
   const [texto, setTexto] = useState("");
 
@@ -27,7 +27,9 @@ function InputChips({
     const limpio = texto.trim();
     if (!limpio) return;
     // Evitar duplicados (sin importar mayúsculas)
-    const yaExiste = valores.some((v) => v.toLowerCase() === limpio.toLowerCase());
+    const yaExiste = valores.some(
+      (v) => v.toLowerCase() === limpio.toLowerCase(),
+    );
     if (yaExiste) {
       setTexto("");
       return;
