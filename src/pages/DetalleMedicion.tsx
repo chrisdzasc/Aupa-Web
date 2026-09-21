@@ -17,6 +17,7 @@ import {
   formatearFechaHora,
   calcularEdadEnFecha,
 } from "../utils/fechas";
+import { eliminarMedicion } from "../services/medicion.service";
 
 // Convierte un decimal de la API (texto) a número, o null si no se registró
 const aNumero = (valor: string | null): number | null =>
@@ -55,6 +56,8 @@ function DetalleMedicion() {
   const { id, idMedicion } = useParams();
   const navigate = useNavigate();
 
+  const [eliminando, setEliminando] = useState(false);
+  const [errorEliminar, setErrorEliminar] = useState("");
   const [modalEliminar, setModalEliminar] = useState(false);
   const [m, setM] = useState<MedicionVista | null>(null);
   const [cargando, setCargando] = useState(true);
@@ -107,6 +110,21 @@ function DetalleMedicion() {
     );
   }
 
+  const handleEliminar = async () => {
+    setEliminando(true);
+    setErrorEliminar("");
+
+    try {
+      await eliminarMedicion(idMedicion!);
+      navigate(`/pacientes/${id}`);
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : "Error al eliminar la medición";
+      setErrorEliminar(mensaje);
+      setEliminando(false);
+    }
+  };
+
   // IMC calculado
   const calcularIMC = (): string => {
     if (!m.pesoKg || !m.tallaCm) return "-";
@@ -136,13 +154,6 @@ function DetalleMedicion() {
     { label: "Pantorrilla", valor: m.pantorrillaCm, unidad: "cm" },
     { label: "Pliegue tricipital", valor: m.tricipitalMm, unidad: "mm" },
   ];
-
-  const handleEliminar = () => {
-    // Cuando haya backend: llamada DELETE. Por ahora simula y regresa.
-    alert("Medición eliminada (simulado)");
-    setModalEliminar(false);
-    navigate(`/pacientes/${id}`);
-  };
 
   return (
     <div className="max-w-6xl mx-auto">
@@ -352,6 +363,9 @@ function DetalleMedicion() {
               ¿Seguro que deseas eliminar la medición del {m.fecha}? Esta acción
               no se puede deshacer.
             </p>
+            {errorEliminar && (
+              <p className="text-sm text-red-600 mb-3">{errorEliminar}</p>
+            )}
             <div className="flex justify-end gap-3">
               <button
                 onClick={() => setModalEliminar(false)}
@@ -361,9 +375,10 @@ function DetalleMedicion() {
               </button>
               <button
                 onClick={handleEliminar}
-                className="px-6 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700"
+                disabled={eliminando}
+                className="px-6 py-2 bg-red-600 text-white rounded-lg text-sm font-medium hover:bg-red-700 disabled:bg-red-400 disabled:cursor-not-allowed"
               >
-                Sí, eliminar
+                {eliminando ? "Eliminando..." : "Eliminar"}
               </button>
             </div>
           </div>

@@ -48,6 +48,7 @@ export interface MedicionAPI {
   notas: string | null;
   createdAt: string;
   updatedAt: string;
+  pacienteId: number;
 }
 
 export interface PacienteDetalle {

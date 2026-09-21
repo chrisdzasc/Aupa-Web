@@ -7,7 +7,15 @@ import {
   ClipboardList,
   ArrowLeft,
   ChevronRight,
+  Loader2,
 } from "lucide-react";
+import { obtenerPaciente } from "../services/paciente.service";
+import {
+  obtenerMedicion,
+  crearMedicion,
+  editarMedicion,
+  DatosMedicion,
+} from "../services/medicion.service";
 
 interface Errores {
   fechaConsulta?: string;
@@ -16,34 +24,18 @@ interface Errores {
   perimetroCefalico?: string;
 }
 
-// ---- Paciente de ejemplo (vendrá del backend) ----
-const pacienteEjemplo = {
-  id: 2,
-  nombre: "Mateo García López",
-  fechaNacimiento: "2024-03-15",
-};
-
-// ---- Medición de ejemplo para modo editar (vendrá del backend) ----
-const medicionExistente = {
-  id: 12,
-  fechaConsulta: "2026-09-15",
-  peso: "11.8",
-  talla: "83.5",
-  perimetroCefalico: "47.8",
-  perimetroBraquial: "14.2",
-  cintura: "46.2",
-  abdomen: "48.0",
-  cadera: "49.5",
-  pantorrilla: "",
-  tricipital: "",
-  notas:
-    "El paciente muestra ganancia ponderal y de talla acorde a su carril de crecimiento. Control en 3 meses.",
-};
-
 function FormularioMedicion() {
   const { id, idMedicion } = useParams();
   const navigate = useNavigate();
-  const paciente = pacienteEjemplo;
+
+  const [paciente, setPaciente] = useState<{
+    nombre: string;
+    fechaNacimiento: string;
+  } | null>(null);
+  const [cargando, setCargando] = useState(true);
+  const [errorCarga, setErrorCarga] = useState("");
+  const [guardando, setGuardando] = useState(false);
+  const [errorServidor, setErrorServidor] = useState("");
 
   // Modo: si hay idMedicion en la URL, estamos editando
   const modoEditar = Boolean(idMedicion);
@@ -70,40 +62,92 @@ function FormularioMedicion() {
 
   const [errores, setErrores] = useState<Errores>({});
 
-  // ---- Precargar datos en modo editar ----
+  // ---- Cargar el paciente y, en modo editar, la medición ----
   useEffect(() => {
-    if (!modoEditar) return;
+    const cargarDatos = async () => {
+      try {
+        const datosPaciente = await obtenerPaciente(id!);
+        setPaciente({
+          nombre: datosPaciente.nombre,
+          fechaNacimiento: datosPaciente.fechaNacimiento,
+        });
 
-    // Cuando haya backend: buscar la medición por idMedicion.
-    const m = medicionExistente;
+        if (modoEditar) {
+          const m = await obtenerMedicion(idMedicion!);
 
-    setFechaConsulta(m.fechaConsulta);
-    setPeso(m.peso);
-    setTalla(m.talla);
-    setPerimetroCefalico(m.perimetroCefalico);
-    setPerimetroBraquial(m.perimetroBraquial);
-    setCintura(m.cintura);
-    setAbdomen(m.abdomen);
-    setCadera(m.cadera);
-    setPantorrilla(m.pantorrilla);
-    setTricipital(m.tricipital);
-    setNotas(m.notas);
+          // La medición debe ser del paciente de la URL
+          if (m.pacienteId !== datosPaciente.id) {
+            setErrorCarga("Medición no encontrada");
+            return;
+          }
 
-    // Abrir el acordeón si alguna complementaria tiene valor
-    const hayComplementarias = [
-      m.perimetroBraquial,
-      m.cintura,
-      m.abdomen,
-      m.cadera,
-      m.pantorrilla,
-      m.tricipital,
-    ].some((v) => v.trim() !== "");
+          const aTexto = (valor: string | null) => valor ?? "";
 
-    if (hayComplementarias) setMostrarComplementarias(true);
-  }, [modoEditar, idMedicion]);
+          setFechaConsulta(m.fechaConsulta);
+          setPeso(m.pesoKg);
+          setTalla(m.tallaCm);
+          setPerimetroCefalico(aTexto(m.perimetroCefalicoCm));
+          setPerimetroBraquial(aTexto(m.perimetroBraquialCm));
+          setCintura(aTexto(m.cinturaCm));
+          setAbdomen(aTexto(m.abdomenCm));
+          setCadera(aTexto(m.caderaCm));
+          setPantorrilla(aTexto(m.pantorrillaCm));
+          setTricipital(aTexto(m.tricipitalMm));
+          setNotas(aTexto(m.notas));
+
+          // Abrir el acordeón si alguna complementaria tiene valor
+          const hayComplementarias = [
+            m.perimetroBraquialCm,
+            m.cinturaCm,
+            m.abdomenCm,
+            m.caderaCm,
+            m.pantorrillaCm,
+            m.tricipitalMm,
+          ].some((v) => v !== null);
+
+          if (hayComplementarias) setMostrarComplementarias(true);
+        }
+      } catch (err) {
+        const mensaje =
+          err instanceof Error ? err.message : "Error al cargar los datos";
+        setErrorCarga(mensaje);
+      } finally {
+        setCargando(false);
+      }
+    };
+
+    cargarDatos();
+  }, [id, idMedicion, modoEditar]);
+
+  if (cargando) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 flex justify-center">
+        <Loader2 className="animate-spin text-teal-600" size={32} />
+      </div>
+    );
+  }
+
+  if (errorCarga || !paciente) {
+    return (
+      <div className="max-w-3xl mx-auto py-20 text-center">
+        <p className="text-sm text-red-600 mb-4">
+          {errorCarga || "Paciente no encontrado"}
+        </p>
+        <Link
+          to={`/pacientes/${id}`}
+          className="text-teal-600 text-sm hover:underline"
+        >
+          &larr; Volver al expediente
+        </Link>
+      </div>
+    );
+  }
 
   // ---- Edad en meses en la fecha de la consulta ----
-  const calcularEdadMeses = (nacimiento: string, consulta: string): number | null => {
+  const calcularEdadMeses = (
+    nacimiento: string,
+    consulta: string,
+  ): number | null => {
     if (!nacimiento || !consulta) return null;
     const [anioN, mesN, diaN] = nacimiento.split("-").map(Number);
     const [anioC, mesC, diaC] = consulta.split("-").map(Number);
@@ -119,7 +163,10 @@ function FormularioMedicion() {
   const edadMeses = calcularEdadMeses(paciente.fechaNacimiento, fechaConsulta);
 
   // ---- Edad precisa ----
-  const calcularEdadPrecisa = (nacimiento: string, consulta: string): string => {
+  const calcularEdadPrecisa = (
+    nacimiento: string,
+    consulta: string,
+  ): string => {
     if (!nacimiento || !consulta) return "";
     const [anioN, mesN, diaN] = nacimiento.split("-").map(Number);
     const [anioC, mesC, diaC] = consulta.split("-").map(Number);
@@ -147,7 +194,10 @@ function FormularioMedicion() {
     return `${partes[0]}, ${partes[1]} y ${partes[2]}`;
   };
 
-  const edadEnConsulta = calcularEdadPrecisa(paciente.fechaNacimiento, fechaConsulta);
+  const edadEnConsulta = calcularEdadPrecisa(
+    paciente.fechaNacimiento,
+    fechaConsulta,
+  );
 
   // ---- IMC ----
   const calcularIMC = (): string | null => {
@@ -160,7 +210,9 @@ function FormularioMedicion() {
   const imcCalculado = calcularIMC();
 
   const etiquetaTalla =
-    edadMeses !== null && edadMeses < 24 ? "Talla / Longitud (cm)" : "Estatura (cm)";
+    edadMeses !== null && edadMeses < 24
+      ? "Talla / Longitud (cm)"
+      : "Estatura (cm)";
 
   const regexPeso = /^(0|[1-9]\d{0,2})?(\.\d{0,3})?$/;
   const regexMedida = /^(0|[1-9]\d{0,2})?(\.\d{0,1})?$/;
@@ -178,39 +230,76 @@ function FormularioMedicion() {
       nuevos.fechaConsulta = "La fecha de consulta es obligatoria";
     } else if (fechaConsulta > hoyStr) {
       nuevos.fechaConsulta = "La fecha no puede ser futura";
-    } else if (paciente.fechaNacimiento && fechaConsulta < paciente.fechaNacimiento) {
+    } else if (
+      paciente.fechaNacimiento &&
+      fechaConsulta < paciente.fechaNacimiento
+    ) {
       nuevos.fechaConsulta = "La fecha no puede ser anterior al nacimiento";
     }
 
     const pesoNum = Number(peso);
     if (!peso.trim()) nuevos.peso = "El peso es obligatorio";
-    else if (isNaN(pesoNum) || pesoNum <= 0) nuevos.peso = "Ingresa un peso válido mayor a 0";
-    else if (pesoNum > 250) nuevos.peso = "Revise el peso, excede el límite clínico";
+    else if (isNaN(pesoNum) || pesoNum <= 0)
+      nuevos.peso = "Ingresa un peso válido mayor a 0";
+    else if (pesoNum > 250)
+      nuevos.peso = "Revise el peso, excede el límite clínico";
 
     const tallaNum = Number(talla);
     if (!talla.trim()) nuevos.talla = "La talla es obligatoria";
-    else if (isNaN(tallaNum) || tallaNum <= 0) nuevos.talla = "Ingresa una talla válida mayor a 0";
-    else if (tallaNum > 250) nuevos.talla = "Revisa la talla, excede el límite clínico";
+    else if (isNaN(tallaNum) || tallaNum <= 0)
+      nuevos.talla = "Ingresa una talla válida mayor a 0";
+    else if (tallaNum > 250)
+      nuevos.talla = "Revisa la talla, excede el límite clínico";
 
     if (perimetroCefalico.trim()) {
       const cefNum = Number(perimetroCefalico);
-      if (isNaN(cefNum) || cefNum <= 0) nuevos.perimetroCefalico = "El perímetro debe ser mayor a 0";
-      else if (cefNum > 70) nuevos.perimetroCefalico = "Excede el límite clínico";
+      if (isNaN(cefNum) || cefNum <= 0)
+        nuevos.perimetroCefalico = "El perímetro debe ser mayor a 0";
+      else if (cefNum > 70)
+        nuevos.perimetroCefalico = "Excede el límite clínico";
     }
 
     setErrores(nuevos);
     return Object.keys(nuevos).length === 0;
   };
 
-  const handleGuardar = () => {
+  // Convierte un campo opcional: vacío → undefined, con valor → número
+  const numOpcional = (valor: string) =>
+    valor.trim() === "" ? undefined : Number(valor);
+
+  const handleGuardar = async () => {
     if (!validar()) return;
 
-    if (modoEditar) {
-      alert("Cambios guardados (simulado)");
-      navigate(`/pacientes/${id}/mediciones/${idMedicion}`);
-    } else {
-      alert("Medición guardada (simulado)");
-      navigate(`/pacientes/${id}`);
+    setGuardando(true);
+    setErrorServidor("");
+
+    const datos: DatosMedicion = {
+      fechaConsulta,
+      pesoKg: Number(peso),
+      tallaCm: Number(talla),
+      perimetroCefalicoCm: numOpcional(perimetroCefalico),
+      perimetroBraquialCm: numOpcional(perimetroBraquial),
+      cinturaCm: numOpcional(cintura),
+      abdomenCm: numOpcional(abdomen),
+      caderaCm: numOpcional(cadera),
+      pantorrillaCm: numOpcional(pantorrilla),
+      tricipitalMm: numOpcional(tricipital),
+      notas: notas.trim() || undefined,
+    };
+
+    try {
+      if (modoEditar) {
+        await editarMedicion(idMedicion!, datos);
+        navigate(`/pacientes/${id}/mediciones/${idMedicion}`);
+      } else {
+        await crearMedicion(id!, datos);
+        navigate(`/pacientes/${id}`);
+      }
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : "Error al guardar la medición";
+      setErrorServidor(mensaje);
+      setGuardando(false);
     }
   };
 
@@ -219,14 +308,24 @@ function FormularioMedicion() {
     ? `/pacientes/${id}/mediciones/${idMedicion}`
     : `/pacientes/${id}`;
 
-  const textoVolver = modoEditar ? "Volver al detalle de la medición" : "Volver al expediente";
+  const textoVolver = modoEditar
+    ? "Volver al detalle de la medición"
+    : "Volver al expediente";
 
   const inputClass = (error?: string) =>
     `w-full px-4 py-2 border rounded-lg text-sm focus:outline-none ${
-      error ? "border-red-400 focus:border-red-500" : "border-gray-200 focus:border-teal-500"
+      error
+        ? "border-red-400 focus:border-red-500"
+        : "border-gray-200 focus:border-teal-500"
     }`;
 
-  const CardHeader = ({ icon: Icon, titulo }: { icon: any; titulo: string }) => (
+  const CardHeader = ({
+    icon: Icon,
+    titulo,
+  }: {
+    icon: any;
+    titulo: string;
+  }) => (
     <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2 border-b border-gray-100 pb-3">
       <Icon size={20} className="text-teal-600" />
       {titulo}
@@ -240,7 +339,10 @@ function FormularioMedicion() {
         to={rutaVolver}
         className="inline-flex items-center gap-1.5 text-teal-600 text-sm hover:underline mb-4 group animate-entrance delay-1"
       >
-        <ArrowLeft size={15} className="group-hover:-translate-x-1 transition-transform" />
+        <ArrowLeft
+          size={15}
+          className="group-hover:-translate-x-1 transition-transform"
+        />
         {textoVolver}
       </Link>
 
@@ -249,7 +351,8 @@ function FormularioMedicion() {
           {modoEditar ? "Editar Medición" : "Nueva Medición"}
         </h1>
         <p className="text-sm text-gray-500 mb-6">
-          Paciente: <span className="font-semibold text-gray-700">{paciente.nombre}</span>
+          Paciente:{" "}
+          <span className="font-semibold text-gray-700">{paciente.nombre}</span>
         </p>
       </div>
 
@@ -265,7 +368,8 @@ function FormularioMedicion() {
             value={fechaConsulta}
             onChange={(e) => {
               setFechaConsulta(e.target.value);
-              if (errores.fechaConsulta) setErrores({ ...errores, fechaConsulta: undefined });
+              if (errores.fechaConsulta)
+                setErrores({ ...errores, fechaConsulta: undefined });
             }}
             className={inputClass(errores.fechaConsulta)}
           />
@@ -297,12 +401,15 @@ function FormularioMedicion() {
               placeholder="0.000"
               className={inputClass(errores.peso)}
             />
-            {errores.peso && <p className="text-xs text-red-500 mt-1">{errores.peso}</p>}
+            {errores.peso && (
+              <p className="text-xs text-red-500 mt-1">{errores.peso}</p>
+            )}
           </div>
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {etiquetaTalla}<span className="text-red-500">*</span>
+              {etiquetaTalla}
+              <span className="text-red-500">*</span>
             </label>
             <input
               type="text"
@@ -311,14 +418,17 @@ function FormularioMedicion() {
               onChange={(e) => {
                 if (e.target.value === "" || regexMedida.test(e.target.value)) {
                   setTalla(e.target.value);
-                  if (errores.talla) setErrores({ ...errores, talla: undefined });
+                  if (errores.talla)
+                    setErrores({ ...errores, talla: undefined });
                 }
               }}
               onBlur={() => formatearNumero(talla, setTalla)}
               placeholder="0.0"
               className={inputClass(errores.talla)}
             />
-            {errores.talla && <p className="text-xs text-red-500 mt-1">{errores.talla}</p>}
+            {errores.talla && (
+              <p className="text-xs text-red-500 mt-1">{errores.talla}</p>
+            )}
           </div>
 
           <div>
@@ -336,12 +446,16 @@ function FormularioMedicion() {
                     setErrores({ ...errores, perimetroCefalico: undefined });
                 }
               }}
-              onBlur={() => formatearNumero(perimetroCefalico, setPerimetroCefalico)}
+              onBlur={() =>
+                formatearNumero(perimetroCefalico, setPerimetroCefalico)
+              }
               placeholder="0.0"
               className={inputClass(errores.perimetroCefalico)}
             />
             {errores.perimetroCefalico && (
-              <p className="text-xs text-red-500 mt-1">{errores.perimetroCefalico}</p>
+              <p className="text-xs text-red-500 mt-1">
+                {errores.perimetroCefalico}
+              </p>
             )}
           </div>
         </div>
@@ -359,18 +473,25 @@ function FormularioMedicion() {
             <p className="text-xs text-gray-500 mb-1">IMC calculado</p>
             {imcCalculado ? (
               <p className="text-3xl font-bold text-teal-700">
-                {imcCalculado} <span className="text-sm font-normal text-gray-500">kg/m²</span>
+                {imcCalculado}{" "}
+                <span className="text-sm font-normal text-gray-500">kg/m²</span>
               </p>
             ) : (
-              <p className="text-sm text-gray-400 mt-2">Ingresa peso y talla para calcular el IMC</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Ingresa peso y talla para calcular el IMC
+              </p>
             )}
           </div>
           <div>
             <p className="text-xs text-gray-500 mb-1">Edad en la consulta</p>
             {edadEnConsulta ? (
-              <p className="text-lg font-bold text-teal-700 mt-1">{edadEnConsulta}</p>
+              <p className="text-lg font-bold text-teal-700 mt-1">
+                {edadEnConsulta}
+              </p>
             ) : (
-              <p className="text-sm text-gray-400 mt-2">Selecciona una fecha válida</p>
+              <p className="text-sm text-gray-400 mt-2">
+                Selecciona una fecha válida
+              </p>
             )}
           </div>
         </div>
@@ -395,21 +516,38 @@ function FormularioMedicion() {
         {mostrarComplementarias && (
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-4 accordion-content">
             {[
-              { label: "Perímetro braquial (cm)", val: perimetroBraquial, set: setPerimetroBraquial },
+              {
+                label: "Perímetro braquial (cm)",
+                val: perimetroBraquial,
+                set: setPerimetroBraquial,
+              },
               { label: "Cintura (cm)", val: cintura, set: setCintura },
               { label: "Abdomen (cm)", val: abdomen, set: setAbdomen },
               { label: "Cadera (cm)", val: cadera, set: setCadera },
-              { label: "Pantorrilla (cm)", val: pantorrilla, set: setPantorrilla },
-              { label: "Pliegue tricipital (mm)", val: tricipital, set: setTricipital },
+              {
+                label: "Pantorrilla (cm)",
+                val: pantorrilla,
+                set: setPantorrilla,
+              },
+              {
+                label: "Pliegue tricipital (mm)",
+                val: tricipital,
+                set: setTricipital,
+              },
             ].map((campo) => (
               <div key={campo.label}>
-                <label className="block text-sm font-medium text-gray-700 mb-1">{campo.label}</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  {campo.label}
+                </label>
                 <input
                   type="text"
                   inputMode="decimal"
                   value={campo.val}
                   onChange={(e) => {
-                    if (e.target.value === "" || regexMedida.test(e.target.value)) {
+                    if (
+                      e.target.value === "" ||
+                      regexMedida.test(e.target.value)
+                    ) {
                       campo.set(e.target.value);
                     }
                   }}
@@ -436,6 +574,12 @@ function FormularioMedicion() {
         />
       </div>
 
+      {errorServidor && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3 mb-6">
+          <p className="text-sm text-red-700">{errorServidor}</p>
+        </div>
+      )}
+
       {/* Barra de acción fija */}
       <div className="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 shadow-[0_-1px_4px_rgba(0,0,0,0.04)] z-40">
         <div className="max-w-3xl mx-auto px-6 py-4 flex justify-between items-center">
@@ -447,9 +591,14 @@ function FormularioMedicion() {
           </Link>
           <button
             onClick={handleGuardar}
-            className="px-6 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors shadow-sm"
+            disabled={guardando}
+            className="px-6 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:bg-teal-400 disabled:cursor-not-allowed transition-colors shadow-sm"
           >
-            {modoEditar ? "Guardar cambios" : "Guardar medición"}
+            {guardando
+              ? "Guardando..."
+              : modoEditar
+                ? "Guardar cambios"
+                : "Guardar medición"}
           </button>
         </div>
       </div>
