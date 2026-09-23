@@ -49,6 +49,12 @@ export interface MedicionAPI {
   createdAt: string;
   updatedAt: string;
   pacienteId: number;
+  puntuacionZ: {
+    pesoEdad: number | null;
+    tallaEdad: number | null;
+    imcEdad: number | null;
+    pesoTalla: number | null;
+  };
 }
 
 export interface PacienteDetalle {

@@ -10,6 +10,7 @@ import {
   FileText,
   AlertTriangle,
   Loader2,
+  TrendingUp,
 } from "lucide-react";
 import { obtenerPaciente, PacienteDetalle } from "../services/paciente.service";
 import {
@@ -47,6 +48,7 @@ const adaptarMedicion = (p: PacienteDetalle, idMedicion: number) => {
     pantorrillaCm: aNumero(m.pantorrillaCm),
     tricipitalMm: aNumero(m.tricipitalMm),
     notas: m.notas,
+    puntuacionZ: m.puntuacionZ,
   };
 };
 
@@ -327,8 +329,47 @@ function DetalleMedicion() {
           </div>
         </section>
 
+        {/* Evaluación OMS — columna derecha, en medio */}
+        <section className="order-4 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-2 lg:row-span-2 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md p-5 sm:p-6 animate-entrance delay-4">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 mb-4">
+            <TrendingUp size={14} className="text-teal-600" />
+            Evaluación OMS
+          </h2>
+
+          <div className="space-y-2.5">
+            {[
+              { label: "Talla para la edad", valor: m.puntuacionZ.tallaEdad },
+              { label: "Peso para la edad", valor: m.puntuacionZ.pesoEdad },
+              { label: "IMC para la edad", valor: m.puntuacionZ.imcEdad },
+              { label: "Peso para la talla", valor: m.puntuacionZ.pesoTalla },
+            ].map((indicador, i) => (
+              <div
+                key={indicador.label}
+                style={{ animationDelay: `${300 + i * 70}ms` }}
+                className="animate-stagger-card flex items-center justify-between gap-3 bg-gray-50 border border-gray-100 rounded-lg px-4 py-2.5 hover:border-teal-300 hover:bg-teal-50/30 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200 cursor-default group"
+              >
+                <span className="text-sm text-gray-600">{indicador.label}</span>
+                {indicador.valor !== null ? (
+                  <span className="text-base font-semibold text-gray-900 group-hover:text-teal-950 transition-colors tabular-nums">
+                    {indicador.valor > 0 ? "+" : ""}
+                    {indicador.valor.toFixed(2)}
+                  </span>
+                ) : (
+                  <span className="text-xs text-gray-400 italic">
+                    No aplica a esta edad
+                  </span>
+                )}
+              </div>
+            ))}
+          </div>
+
+          <p className="text-[11px] text-gray-400 mt-3 leading-relaxed">
+            Puntuación Z calculada con el método LMS.
+          </p>
+        </section>
+
         {/* Notas — móvil: 4º | desktop: columna derecha, abajo */}
-        <section className="order-4 lg:order-none lg:col-span-5 lg:col-start-8 lg:row-start-2 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md p-5 sm:p-6 animate-entrance delay-4">
+        <section className="order-5 lg:order-none lg:col-span-7 lg:col-start-1 lg:row-start-3 bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md p-5 sm:p-6 animate-entrance delay-4">
           <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-400 flex items-center gap-1.5 mb-3">
             <FileText size={14} className="text-teal-600" />
             Notas de la consulta
