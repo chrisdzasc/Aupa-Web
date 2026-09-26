@@ -607,9 +607,12 @@ function DetallePaciente() {
       )}
 
       <ModalAgregarConsulta
-        pacienteNombre={paciente.nombre}
         isOpen={modalAbierto}
         onClose={() => setModalAbierto(false)}
+        pacienteId={paciente.id}
+        pacienteNombre={paciente.nombre}
+        numeroExpediente={paciente.numeroExpediente}
+        sexo={paciente.sexo}
       />
     </div>
   );

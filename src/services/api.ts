@@ -1,12 +1,15 @@
 const API_URL = process.env.REACT_APP_API_URL || "http://localhost:3001";
 
 interface OpcionesPeticion {
-  metodo?: "GET" | "POST" | "PUT" | "DELETE";
+  metodo?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   body?: any;
   requiereAuth?: boolean;
 }
 
-export const peticion = async (ruta: string, opciones: OpcionesPeticion = {}) => {
+export const peticion = async (
+  ruta: string,
+  opciones: OpcionesPeticion = {},
+) => {
   const { metodo = "GET", body, requiereAuth = true } = opciones;
 
   const headers: Record<string, string> = {
