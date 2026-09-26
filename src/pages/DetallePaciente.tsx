@@ -23,6 +23,8 @@ import {
   obtenerIniciales,
   formatearTelefono,
 } from "../utils/fechas";
+import TabGraficas from "../components/TabGraficas";
+import { IndicadorCurva } from "../services/curvas.service";
 
 const PARENTESCO_LEGIBLE: Record<string, string> = {
   MADRE: "Madre",
@@ -40,6 +42,7 @@ const adaptarPaciente = (p: PacienteDetalle) => ({
   iniciales: obtenerIniciales(p.nombre),
   sexo: p.sexo,
   fechaNacimiento: formatearFecha(p.fechaNacimiento),
+  fechaNacimientoISO: p.fechaNacimiento,
   edadMeses: calcularEdadMeses(p.fechaNacimiento),
   activo: p.activo,
   tipoAlimentacion: p.tipoAlimentacion ?? "No registrado",
@@ -68,6 +71,24 @@ const adaptarPaciente = (p: PacienteDetalle) => ({
     pesoKg: Number(m.pesoKg),
     tallaCm: Number(m.tallaCm),
   })),
+
+  // Indicadores que aplican al paciente, según su medición más reciente
+  indicadoresDisponibles: (() => {
+    const ultima = p.mediciones[0];
+    if (!ultima) return [] as IndicadorCurva[];
+
+    const z = ultima.puntuacionZ;
+    const disponibles: IndicadorCurva[] = [];
+
+    if (z.tallaEdad !== null) disponibles.push("talla-edad");
+    if (z.pesoEdad !== null) disponibles.push("peso-edad");
+    if (z.imcEdad !== null) disponibles.push("imc-edad");
+    if (z.pesoTalla !== null) disponibles.push("peso-talla");
+    if (z.perimetroCefalicoEdad !== null)
+      disponibles.push("perimetro-cefalico-edad");
+
+    return disponibles;
+  })(),
 });
 
 type PacienteVista = ReturnType<typeof adaptarPaciente>;
@@ -566,11 +587,12 @@ function DetallePaciente() {
       )}
 
       {tabActiva === "Graficas" && (
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <p className="text-gray-500">
-            Las gráficas de crecimiento OMS se implementarán aquí.
-          </p>
-        </div>
+        <TabGraficas
+          pacienteId={id!}
+          fechaNacimiento={paciente.fechaNacimientoISO}
+          disponibles={paciente.indicadoresDisponibles}
+          tieneMediciones={paciente.mediciones.length > 0}
+        />
       )}
 
       {tabActiva === "Alimentacion" && (

@@ -91,3 +91,16 @@
     animation: accordionOpen 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     overflow: hidden;
 }
+
+/* Transición suave al resaltar una curva desde la leyenda */
+.recharts-line-curve {
+  transition:
+    stroke-opacity 0.25s ease,
+    stroke-width 0.25s ease;
+}
+
+.recharts-dot {
+  transition:
+    opacity 0.25s ease,
+    stroke-width 0.2s ease;
+}

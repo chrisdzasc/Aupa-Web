@@ -54,6 +54,7 @@ export interface MedicionAPI {
     tallaEdad: number | null;
     imcEdad: number | null;
     pesoTalla: number | null;
+    perimetroCefalicoEdad: number | null;
   };
 }
 
