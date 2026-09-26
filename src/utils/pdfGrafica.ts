@@ -46,13 +46,18 @@ const fechaDeHoy = (): string =>
     timeZone: "America/Mexico_City",
   }).format(new Date());
 
-/**
- * Genera un PDF con la gráfica de crecimiento y los datos del paciente,
- * pensado para imprimirse y entregarse al tutor.
- */
-export const descargarGraficaPDF = async (
+export const crearDocumento = (): jsPDF =>
+  new jsPDF({ unit: "mm", format: "letter", orientation: "landscape" });
+
+/** Arma el nombre del archivo, por ejemplo: Aupa_EXP-0003_talla-edad_2026-09-26.pdf */
+export const nombreArchivo = (expediente: string, sufijo: string): string =>
+  `Aupa_${expediente}_${sufijo}_${new Date().toISOString().slice(0, 10)}.pdf`;
+
+export const agregarPaginaGrafica = async (
+  pdf: jsPDF,
   elemento: HTMLElement,
   datos: DatosPDF,
+  esPrimera = true,
 ): Promise<void> => {
   const { paciente, nutriologo, curva } = datos;
 
@@ -62,11 +67,9 @@ export const descargarGraficaPDF = async (
     logging: false,
   });
 
-  const pdf = new jsPDF({
-    unit: "mm",
-    format: "letter",
-    orientation: "landscape",
-  });
+  if (!esPrimera) {
+    pdf.addPage();
+  }
 
   let y = MARGEN;
 
@@ -101,7 +104,6 @@ export const descargarGraficaPDF = async (
   pdf.setFillColor(255, 255, 255);
   pdf.roundedRect(MARGEN, y, ANCHO_UTIL, ALTO_TARJETA, 2.5, 2.5, "FD");
 
-  // Círculo con las iniciales, del color que usa el sistema según el sexo
   const esFemenino = paciente.sexo === "F";
   const centroX = MARGEN + 14;
   const centroY = y + ALTO_TARJETA / 2;
@@ -116,7 +118,6 @@ export const descargarGraficaPDF = async (
     align: "center",
   });
 
-  // Nombre y datos
   const textoX = MARGEN + 27;
 
   pdf.setFont("helvetica", "bold");
@@ -136,7 +137,6 @@ export const descargarGraficaPDF = async (
     centroY + 5,
   );
 
-  // Expediente, alineado a la derecha de la tarjeta
   pdf.setFont("helvetica", "normal");
   pdf.setFontSize(9);
   pdf.setTextColor(...GRIS);
@@ -173,8 +173,6 @@ export const descargarGraficaPDF = async (
   y += 10;
 
   // ---- La gráfica ----
-  // Se ajusta al espacio disponible sin deformarse, dejando lugar
-  // para el resumen y el pie de página
   const ALTO_RESUMEN = 24;
   const ALTO_PIE = 16;
   const altoDisponible = ALTO - y - ALTO_RESUMEN - ALTO_PIE - 20;
@@ -188,7 +186,6 @@ export const descargarGraficaPDF = async (
     anchoImagen = altoImagen / proporcion;
   }
 
-  // Centrada si sobró ancho
   const xImagen = MARGEN + (ANCHO_UTIL - anchoImagen) / 2;
 
   pdf.addImage(
@@ -290,10 +287,16 @@ export const descargarGraficaPDF = async (
     pie - 5,
   );
   pdf.text(`Documento generado el ${fechaDeHoy()}`, MARGEN, pie - 1);
+};
 
-  const nombreArchivo = `Aupa_${paciente.numeroExpediente}_${curva.indicador}_${new Date()
-    .toISOString()
-    .slice(0, 10)}.pdf`;
-
-  pdf.save(nombreArchivo);
+/** Descarga una sola gráfica en PDF */
+export const descargarGraficaPDF = async (
+  elemento: HTMLElement,
+  datos: DatosPDF,
+): Promise<void> => {
+  const pdf = crearDocumento();
+  await agregarPaginaGrafica(pdf, elemento, datos);
+  pdf.save(
+    nombreArchivo(datos.paciente.numeroExpediente, datos.curva.indicador),
+  );
 };

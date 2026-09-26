@@ -7,7 +7,12 @@ import {
 } from "../services/curvas.service";
 import { formatearFecha, calcularEdadEnFecha } from "../utils/fechas";
 import GraficaCrecimiento from "./GraficaCrecimiento";
-import { descargarGraficaPDF } from "../utils/pdfGrafica";
+import {
+  descargarGraficaPDF,
+  agregarPaginaGrafica,
+  crearDocumento,
+  nombreArchivo,
+} from "../utils/pdfGrafica";
 import { obtenerProfesionista } from "../services/auth.service";
 
 const INDICADORES: { valor: IndicadorCurva; etiqueta: string }[] = [
@@ -51,6 +56,7 @@ function TabGraficas({
 
   const contenedorGrafica = useRef<HTMLDivElement>(null);
   const [descargando, setDescargando] = useState(false);
+  const [progreso, setProgreso] = useState<string | null>(null);
 
   const handleDescargar = async () => {
     if (!contenedorGrafica.current || !curva) return;
@@ -76,6 +82,61 @@ function TabGraficas({
     } catch (err) {
       console.error("Error al generar el PDF:", err);
     } finally {
+      setDescargando(false);
+    }
+  };
+
+  // Descarga todas las gráficas disponibles en un solo PDF.
+  const handleDescargarTodas = async () => {
+    if (!contenedorGrafica.current) return;
+
+    const indicadorOriginal = indicador;
+    setDescargando(true);
+
+    try {
+      const profesionista = obtenerProfesionista();
+      const pdf = crearDocumento();
+
+      const datosPaciente = {
+        nombre: nombrePaciente,
+        numeroExpediente,
+        sexo,
+        fechaNacimiento,
+      };
+
+      const datosNutriologo = {
+        nombre: profesionista?.nombre ?? "",
+        cedulaProfesional: profesionista?.cedulaProfesional,
+      };
+
+      for (let i = 0; i < opciones.length; i++) {
+        const opcion = opciones[i];
+        setProgreso(`${i + 1} de ${opciones.length}`);
+
+        setIndicador(opcion.valor);
+        const datosCurva = await obtenerCurva(pacienteId, opcion.valor);
+        await new Promise((resolver) => setTimeout(resolver, 700));
+
+        if (!contenedorGrafica.current) break;
+
+        await agregarPaginaGrafica(
+          pdf,
+          contenedorGrafica.current,
+          {
+            paciente: datosPaciente,
+            nutriologo: datosNutriologo,
+            curva: datosCurva,
+          },
+          i === 0,
+        );
+      }
+
+      pdf.save(nombreArchivo(numeroExpediente, "graficas"));
+    } catch (err) {
+      console.error("Error al generar el PDF:", err);
+    } finally {
+      setIndicador(indicadorOriginal);
+      setProgreso(null);
       setDescargando(false);
     }
   };
@@ -166,8 +227,8 @@ function TabGraficas({
         {!cargando && !error && curva && (
           <>
             {/* Encabezado */}
-            <div className="pb-5 border-b border-gray-100 flex items-start justify-between gap-4">
-              <div>
+            <div className="pb-5 border-b border-gray-100 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
+              <div className="min-w-0">
                 <h2 className="text-lg font-bold text-gray-900">
                   {curva.etiqueta}
                 </h2>
@@ -183,24 +244,50 @@ function TabGraficas({
                     : `${Math.round(curva.eje.min)} a ${Math.round(curva.eje.max)} cm`}
                 </p>
               </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={handleDescargar}
+                  disabled={descargando}
+                  className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                >
+                  <Download size={15} className="text-gray-500" />
+                  Esta gráfica
+                </button>
 
-              <button
-                onClick={handleDescargar}
-                disabled={descargando}
-                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all shrink-0"
-              >
-                <Download size={15} className="text-gray-500" />
-                {descargando ? "Generando..." : "Descargar PDF"}
-              </button>
+                {opciones.length > 1 && (
+                  <button
+                    onClick={handleDescargarTodas}
+                    disabled={descargando}
+                    className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:opacity-60 disabled:cursor-not-allowed transition-all"
+                  >
+                    <Download size={15} />
+                    {progreso ? `Generando ${progreso}...` : "Todas"}
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="mt-4 bg-white" ref={contenedorGrafica}>
-              <GraficaCrecimiento
-                curva={curva}
-                indiceSeleccionado={enfocado ?? seleccionado}
-                onSeleccionar={setSeleccionado}
-                onEnfocar={setEnfocado}
-              />
+            <div className="mt-4 relative">
+              <div className="bg-white" ref={contenedorGrafica}>
+                <GraficaCrecimiento
+                  curva={curva}
+                  indiceSeleccionado={enfocado ?? seleccionado}
+                  onSeleccionar={setSeleccionado}
+                  onEnfocar={setEnfocado}
+                />
+              </div>
+
+              {/* Tapa la gráfica mientras se generan las páginas del PDF,
+                para que no se vea el cambio de indicador */}
+              {progreso && (
+                <div className="absolute inset-0 bg-white/95 flex flex-col items-center justify-center gap-3 rounded-lg">
+                  <Loader2 className="animate-spin text-teal-600" size={28} />
+                  <p className="text-sm font-medium text-gray-700">
+                    Generando PDF
+                  </p>
+                  <p className="text-xs text-gray-500">Gráfica {progreso}</p>
+                </div>
+              )}
             </div>
 
             {/* Franja de resumen */}
