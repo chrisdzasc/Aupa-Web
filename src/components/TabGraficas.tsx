@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from "react";
-import { Loader2, LineChart, Download } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Loader2, LineChart, Download, Plus } from "lucide-react";
 import {
   obtenerCurva,
   Curva,
@@ -172,15 +173,76 @@ function TabGraficas({
   // Estado vacío: el paciente no tiene mediciones
   if (!tieneMediciones) {
     return (
-      <div className="bg-white rounded-xl border border-gray-200 p-12 text-center">
-        <LineChart size={40} className="mx-auto text-gray-300 mb-4" />
-        <h3 className="text-base font-semibold text-gray-700 mb-1">
-          Sin mediciones registradas
-        </h3>
-        <p className="text-sm text-gray-500">
-          Registra la primera medición para visualizar las curvas de
-          crecimiento.
-        </p>
+      <div>
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm relative overflow-hidden">
+          <svg
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full pointer-events-none"
+            preserveAspectRatio="none"
+            viewBox="0 0 800 400"
+          >
+            {[
+              { d: "M 0,300 Q 200,210 400,160 T 800,90", color: "#0f172a" },
+              { d: "M 0,325 Q 200,240 400,192 T 800,125", color: "#dc2626" },
+              { d: "M 0,350 Q 200,270 400,225 T 800,160", color: "#16a34a" },
+              { d: "M 0,372 Q 200,300 400,258 T 800,196", color: "#dc2626" },
+              { d: "M 0,392 Q 200,328 400,290 T 800,232", color: "#0f172a" },
+            ].map((curva, i) => (
+              <path
+                key={i}
+                d={curva.d}
+                fill="none"
+                stroke={curva.color}
+                strokeWidth={1.5}
+                strokeOpacity={0.12}
+                strokeDasharray="6 6"
+              />
+            ))}
+          </svg>
+
+          <div className="relative px-6 py-16 flex flex-col items-center text-center">
+            <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-5">
+              <LineChart size={30} className="text-gray-400" />
+            </div>
+
+            <h3 className="text-lg font-bold text-gray-800 mb-1.5">
+              Sin mediciones registradas
+            </h3>
+            <p className="text-sm text-gray-500 max-w-sm mb-6 leading-relaxed">
+              Registra la primera medición para visualizar las curvas de
+              crecimiento de la OMS y la puntuación Z del paciente.
+            </p>
+
+            <Link
+              to={`/pacientes/${pacienteId}/nueva-medicion`}
+              className="inline-flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-sm transition-all"
+            >
+              <Plus size={16} />
+              Registrar medición
+            </Link>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+          {[
+            { etiqueta: "Valor", detalle: "Sin registro inicial" },
+            { etiqueta: "Puntuación Z", detalle: "Pendiente de cálculo" },
+            { etiqueta: "Fecha de consulta", detalle: "Sin consultas previas" },
+          ].map((tarjeta) => (
+            <div
+              key={tarjeta.etiqueta}
+              className="bg-gray-50 rounded-lg p-3.5 border border-gray-100"
+            >
+              <span className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
+                {tarjeta.etiqueta}
+              </span>
+              <span className="text-2xl font-bold text-gray-300">—</span>
+              <span className="block text-xs text-gray-400 mt-1">
+                {tarjeta.detalle}
+              </span>
+            </div>
+          ))}
+        </div>
       </div>
     );
   }
