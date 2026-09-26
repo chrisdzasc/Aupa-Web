@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Loader2, LineChart } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, LineChart, Download } from "lucide-react";
 import {
   obtenerCurva,
   Curva,
@@ -7,6 +7,8 @@ import {
 } from "../services/curvas.service";
 import { formatearFecha, calcularEdadEnFecha } from "../utils/fechas";
 import GraficaCrecimiento from "./GraficaCrecimiento";
+import { descargarGraficaPDF } from "../utils/pdfGrafica";
+import { obtenerProfesionista } from "../services/auth.service";
 
 const INDICADORES: { valor: IndicadorCurva; etiqueta: string }[] = [
   { valor: "talla-edad", etiqueta: "Talla / Edad" },
@@ -19,6 +21,9 @@ const INDICADORES: { valor: IndicadorCurva; etiqueta: string }[] = [
 interface Props {
   pacienteId: string;
   fechaNacimiento: string;
+  nombrePaciente: string;
+  numeroExpediente: string;
+  sexo: "M" | "F";
   disponibles: IndicadorCurva[];
   tieneMediciones: boolean;
 }
@@ -26,6 +31,9 @@ interface Props {
 function TabGraficas({
   pacienteId,
   fechaNacimiento,
+  nombrePaciente,
+  numeroExpediente,
+  sexo,
   disponibles,
   tieneMediciones,
 }: Props) {
@@ -40,6 +48,37 @@ function TabGraficas({
   const [seleccionado, setSeleccionado] = useState<number | null>(null);
 
   const [enfocado, setEnfocado] = useState<number | null>(null);
+
+  const contenedorGrafica = useRef<HTMLDivElement>(null);
+  const [descargando, setDescargando] = useState(false);
+
+  const handleDescargar = async () => {
+    if (!contenedorGrafica.current || !curva) return;
+
+    setDescargando(true);
+
+    try {
+      const profesionista = obtenerProfesionista();
+
+      await descargarGraficaPDF(contenedorGrafica.current, {
+        paciente: {
+          nombre: nombrePaciente,
+          numeroExpediente,
+          sexo,
+          fechaNacimiento,
+        },
+        nutriologo: {
+          nombre: profesionista?.nombre ?? "",
+          cedulaProfesional: profesionista?.cedulaProfesional,
+        },
+        curva,
+      });
+    } catch (err) {
+      console.error("Error al generar el PDF:", err);
+    } finally {
+      setDescargando(false);
+    }
+  };
 
   useEffect(() => {
     if (!indicador) {
@@ -127,24 +166,35 @@ function TabGraficas({
         {!cargando && !error && curva && (
           <>
             {/* Encabezado */}
-            <div className="pb-5 border-b border-gray-100">
-              <h2 className="text-lg font-bold text-gray-900">
-                {curva.etiqueta}
-              </h2>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {curva.referencia === "OMS 2006"
-                  ? "Patrones de crecimiento infantil de la OMS"
-                  : "Referencias de crecimiento de la OMS"}
-                {" · "}
-                {curva.sexo === "F" ? "Niñas" : "Niños"}
-                {" · "}
-                {curva.eje.tipo === "edad"
-                  ? `${Math.round(curva.eje.min)} a ${Math.round(curva.eje.max)} meses`
-                  : `${Math.round(curva.eje.min)} a ${Math.round(curva.eje.max)} cm`}
-              </p>
+            <div className="pb-5 border-b border-gray-100 flex items-start justify-between gap-4">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">
+                  {curva.etiqueta}
+                </h2>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {curva.referencia === "OMS 2006"
+                    ? "Patrones de crecimiento infantil de la OMS"
+                    : "Referencias de crecimiento de la OMS"}
+                  {" · "}
+                  {curva.sexo === "F" ? "Niñas" : "Niños"}
+                  {" · "}
+                  {curva.eje.tipo === "edad"
+                    ? `${Math.round(curva.eje.min)} a ${Math.round(curva.eje.max)} meses`
+                    : `${Math.round(curva.eje.min)} a ${Math.round(curva.eje.max)} cm`}
+                </p>
+              </div>
+
+              <button
+                onClick={handleDescargar}
+                disabled={descargando}
+                className="inline-flex items-center gap-1.5 px-3 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 hover:border-gray-300 disabled:opacity-60 disabled:cursor-not-allowed transition-all shrink-0"
+              >
+                <Download size={15} className="text-gray-500" />
+                {descargando ? "Generando..." : "Descargar PDF"}
+              </button>
             </div>
 
-            <div className="mt-4">
+            <div className="mt-4 bg-white" ref={contenedorGrafica}>
               <GraficaCrecimiento
                 curva={curva}
                 indiceSeleccionado={enfocado ?? seleccionado}

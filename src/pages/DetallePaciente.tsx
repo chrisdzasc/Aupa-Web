@@ -590,6 +590,9 @@ function DetallePaciente() {
         <TabGraficas
           pacienteId={id!}
           fechaNacimiento={paciente.fechaNacimientoISO}
+          nombrePaciente={paciente.nombre}
+          numeroExpediente={paciente.numeroExpediente}
+          sexo={paciente.sexo}
           disponibles={paciente.indicadoresDisponibles}
           tieneMediciones={paciente.mediciones.length > 0}
         />
