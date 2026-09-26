@@ -24,6 +24,9 @@ const INDICADORES: { valor: IndicadorCurva; etiqueta: string }[] = [
   { valor: "perimetro-cefalico-edad", etiqueta: "P. Cefálico / Edad" },
 ];
 
+const CLASES_TARJETA =
+  "bg-gray-50 rounded-lg p-3.5 border border-gray-100 hover:border-teal-300 hover:bg-teal-50/30 hover:-translate-y-0.5 hover:shadow-sm transition-all duration-200 cursor-default animate-entrance";
+
 interface Props {
   pacienteId: string;
   fechaNacimiento: string;
@@ -200,7 +203,7 @@ function TabGraficas({
             ))}
           </svg>
 
-          <div className="relative px-6 py-16 flex flex-col items-center text-center">
+          <div className="relative px-6 py-16 flex flex-col items-center text-center animate-entrance delay-2">
             <div className="w-16 h-16 rounded-2xl bg-gray-50 border border-gray-200 flex items-center justify-center mb-5">
               <LineChart size={30} className="text-gray-400" />
             </div>
@@ -223,7 +226,7 @@ function TabGraficas({
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-6 animate-entrance delay-3">
           {[
             { etiqueta: "Valor", detalle: "Sin registro inicial" },
             { etiqueta: "Puntuación Z", detalle: "Pendiente de cálculo" },
@@ -257,7 +260,7 @@ function TabGraficas({
   return (
     <div>
       {/* Selector de indicador */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-6">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 mb-6 animate-entrance delay-1">
         {opciones.map((opcion) => (
           <button
             key={opcion.valor}
@@ -273,7 +276,7 @@ function TabGraficas({
         ))}
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 shadow-sm">
+      <div className="bg-white rounded-xl border border-gray-200 p-5 sm:p-6 shadow-sm animate-entrance delay-2">
         {cargando && (
           <div className="h-[420px] flex items-center justify-center">
             <Loader2 className="animate-spin text-teal-600" size={32} />
@@ -361,8 +364,11 @@ function TabGraficas({
                   </p>
                 )}
 
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  <div className="bg-gray-50 rounded-lg p-3.5 border border-gray-100">
+                <div
+                  key={indiceActual}
+                  className="grid grid-cols-1 sm:grid-cols-3 gap-4"
+                >
+                  <div className={`${CLASES_TARJETA}`}>
                     <span className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
                       {curva.etiqueta.split(" ")[0]}
                     </span>
@@ -374,7 +380,7 @@ function TabGraficas({
                     </span>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-3.5 border border-gray-100">
+                  <div className={`${CLASES_TARJETA}`}>
                     <span className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
                       Puntuación Z
                     </span>
@@ -385,7 +391,7 @@ function TabGraficas({
                     </span>
                   </div>
 
-                  <div className="bg-gray-50 rounded-lg p-3.5 border border-gray-100">
+                  <div className={`${CLASES_TARJETA}`}>
                     <span className="block text-[11px] font-semibold uppercase tracking-wider text-gray-400 mb-1">
                       Fecha de consulta
                     </span>
