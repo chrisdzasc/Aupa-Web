@@ -13,6 +13,7 @@ export interface Cita {
     id?: number;
     nombre: string;
     numeroExpediente: string;
+    sexo?: "M" | "F";
   };
 }
 
@@ -75,4 +76,14 @@ export const cambiarEstadoCita = async (
 
 export const eliminarCita = async (id: number): Promise<void> => {
   await peticion(`/api/citas/${id}`, { metodo: "DELETE" });
+};
+
+export interface ResumenDia {
+  total: number;
+  pendientes: number;
+}
+
+/* Totales de la agenda de un día, para las tarjetas del dashboard */
+export const obtenerResumen = async (fecha: string): Promise<ResumenDia> => {
+  return peticion(`/api/citas/resumen?fecha=${fecha}`);
 };
