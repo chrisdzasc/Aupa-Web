@@ -5,6 +5,7 @@ import {
   User,
   Cake,
   Calendar,
+  CalendarClock,
   Users,
   Phone,
   Mail,
@@ -47,6 +48,7 @@ const adaptarPaciente = (p: PacienteDetalle) => ({
   activo: p.activo,
   tipoAlimentacion: p.tipoAlimentacion ?? "No registrado",
   inicioComplementaria: p.inicioComplementaria ?? "No registrado",
+  proximaCita: p.proximaCita,
 
   // La API devuelve un solo arreglo de alertas; aquí se separan por tipo
   alergias: p.alertas
@@ -105,21 +107,22 @@ function DetallePaciente() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
 
-  useEffect(() => {
-    const cargarPaciente = async () => {
-      try {
-        const datos = await obtenerPaciente(id!);
-        setPaciente(adaptarPaciente(datos));
-      } catch (err) {
-        const mensaje =
-          err instanceof Error ? err.message : "Error al cargar el paciente";
-        setError(mensaje);
-      } finally {
-        setCargando(false);
-      }
-    };
+  const cargarPaciente = async () => {
+    try {
+      const datos = await obtenerPaciente(id!);
+      setPaciente(adaptarPaciente(datos));
+    } catch (err) {
+      const mensaje =
+        err instanceof Error ? err.message : "Error al cargar el paciente";
+      setError(mensaje);
+    } finally {
+      setCargando(false);
+    }
+  };
 
+  useEffect(() => {
     cargarPaciente();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
 
   if (cargando) {
@@ -195,6 +198,40 @@ function DetallePaciente() {
     const m = tallaCm / 100;
     return (pesoKg / (m * m)).toFixed(1);
   };
+
+  // Tarjeta de la próxima cita. Se muestra junto a las de alimentación.
+  const tarjetaProximaCita = (
+    <section className="bg-blue-50/50 rounded-lg p-4 border border-blue-100">
+      <div className="flex items-start gap-1.5 mb-2 min-h-[32px]">
+        <CalendarClock size={15} className="text-blue-600 shrink-0 mt-0.5" />
+        <h2 className="text-[11px] font-semibold uppercase tracking-wider text-blue-600/70 leading-tight">
+          Próxima cita
+        </h2>
+      </div>
+
+      {paciente.proximaCita ? (
+        <>
+          <p className="text-base font-bold text-gray-800 flex items-center gap-2">
+            <span className="inline-block w-2 h-2 rounded-full bg-blue-500 shrink-0"></span>
+            {formatearFecha(paciente.proximaCita.fecha)},{" "}
+            {paciente.proximaCita.hora}
+          </p>
+          {paciente.proximaCita.notas && (
+            <p className="text-xs text-gray-500 mt-1.5 line-clamp-2">
+              {paciente.proximaCita.notas}
+            </p>
+          )}
+        </>
+      ) : (
+        <button
+          onClick={() => setModalAbierto(true)}
+          className="text-sm font-medium text-blue-700 hover:text-blue-800 hover:underline transition-colors"
+        >
+          Sin cita agendada · Agendar
+        </button>
+      )}
+    </section>
+  );
 
   return (
     <div className="max-w-5xl mx-auto">
@@ -314,92 +351,69 @@ function DetallePaciente() {
 
           <hr className="border-gray-100" />
 
-          {/* Fila: Alertas (+ alimentación si es caso 1) */}
-          <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-stretch">
-            {/* ZONA 2: Alertas médicas */}
-            {tieneAlertas && (
-              <section
-                className={`${dosDatos ? "md:col-span-12" : "md:col-span-7"} bg-red-50/50 rounded-lg p-4 border border-red-200`}
-              >
-                <div className="flex items-center gap-1.5 mb-3">
-                  <span className="flex h-2 w-2 relative">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+          {/* Alertas médicas, siempre en su propia fila */}
+          {tieneAlertas && (
+            <section className="bg-red-50/50 rounded-lg p-4 border border-red-200">
+              <div className="flex items-center gap-1.5 mb-3">
+                <span className="flex h-2 w-2 relative">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500"></span>
+                </span>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-red-800">
+                  Alertas Médicas
+                </h2>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-2">
+                {paciente.alergias.map((alergia, i) => (
+                  <span
+                    key={`a-${i}`}
+                    className="inline-flex items-center gap-1.5 bg-red-100 text-red-800 border border-red-200 px-3 py-1 rounded-full text-xs font-semibold"
+                  >
+                    <TriangleAlert
+                      size={13}
+                      className="text-red-600 shrink-0"
+                    />
+                    {alergia}
                   </span>
-                  <h2 className="text-xs font-bold uppercase tracking-wider text-red-800">
-                    Alertas Médicas
-                  </h2>
-                </div>
+                ))}
+                {paciente.condicionesCronicas.map((condicion, i) => (
+                  <span
+                    key={`c-${i}`}
+                    className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full text-xs font-medium"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
+                    {condicion}
+                  </span>
+                ))}
+              </div>
+            </section>
+          )}
 
-                {tieneAlertas ? (
-                  <div className="flex flex-wrap items-center gap-2">
-                    {paciente.alergias.map((alergia, i) => (
-                      <span
-                        key={`a-${i}`}
-                        className="inline-flex items-center gap-1.5 bg-red-100 text-red-800 border border-red-200 px-3 py-1 rounded-full text-xs font-semibold"
-                      >
-                        <TriangleAlert
-                          size={13}
-                          className="text-red-600 shrink-0"
-                        />
-                        {alergia}
-                      </span>
-                    ))}
-                    {paciente.condicionesCronicas.map((condicion, i) => (
-                      <span
-                        key={`c-${i}`}
-                        className="inline-flex items-center gap-1.5 bg-amber-100 text-amber-900 border border-amber-300 px-3 py-1 rounded-full text-xs font-medium"
-                      >
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0"></span>
-                        {condicion}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic">
-                    Sin alertas registradas
-                  </p>
-                )}
-              </section>
-            )}
+          {/* Alimentación y próxima cita. Son dos tarjetas antes de los 6 meses y tres después, siempre del mismo ancho. */}
+          <div
+            className={`grid grid-cols-1 gap-5 ${
+              dosDatos ? "sm:grid-cols-3" : "sm:grid-cols-2"
+            }`}
+          >
+            <section className="bg-teal-50/50 rounded-lg p-4 border border-teal-100">
+              <div className="flex items-start gap-1.5 mb-2 min-h-[32px]">
+                <Utensils size={15} className="text-teal-600 shrink-0" />
+                <h2 className="text-[11px] font-semibold uppercase tracking-wider text-teal-600/70 leading-tight">
+                  {etiquetaAlimentacion}
+                </h2>
+              </div>
+              <p className="text-base font-bold text-gray-800 flex items-center gap-2">
+                <span className="inline-block w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>
+                {paciente.tipoAlimentacion}
+              </p>
+            </section>
 
-            {/* ZONA 3 (solo caso 1): Alimentación de un dato, comparte fila */}
-            {!dosDatos && (
-              <section className="md:col-span-5 bg-teal-50/50 rounded-lg p-4 border border-teal-100">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Utensils size={15} className="text-teal-600" />
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wider text-teal-600/70">
-                    {etiquetaAlimentacion}
-                  </h2>
-                </div>
-                <p className="text-base font-bold text-gray-800 flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>
-                  {paciente.tipoAlimentacion}
-                </p>
-              </section>
-            )}
-          </div>
-
-          {/* Fila propia de alimentación (casos 2 y 3): dos mini-bloques */}
-          {dosDatos && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+            {dosDatos && (
               <section className="bg-teal-50/50 rounded-lg p-4 border border-teal-100">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Utensils size={15} className="text-teal-600" />
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wider text-teal-600/70">
-                    {etiquetaAlimentacion}
-                  </h2>
-                </div>
-                <p className="text-base font-bold text-gray-800 flex items-center gap-2">
-                  <span className="inline-block w-2 h-2 rounded-full bg-teal-500 shrink-0"></span>
-                  {paciente.tipoAlimentacion}
-                </p>
-              </section>
-
-              <section className="bg-teal-50/50 rounded-lg p-4 border border-teal-100">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <Utensils size={15} className="text-teal-600" />
-                  <h2 className="text-[11px] font-semibold uppercase tracking-wider text-teal-600/70">
+                <div className="flex items-start gap-1.5 mb-2 min-h-[32px]">
+                  <Utensils size={15} className="text-teal-600 shrink-0" />
+                  <h2 className="text-[11px] font-semibold uppercase tracking-wider text-teal-600/70 leading-tight">
                     {etiquetaComplementaria}
                   </h2>
                 </div>
@@ -408,8 +422,10 @@ function DetallePaciente() {
                   {paciente.inicioComplementaria}
                 </p>
               </section>
-            </div>
-          )}
+            )}
+
+            {tarjetaProximaCita}
+          </div>
         </div>
       </div>
 
@@ -613,6 +629,7 @@ function DetallePaciente() {
         pacienteNombre={paciente.nombre}
         numeroExpediente={paciente.numeroExpediente}
         sexo={paciente.sexo}
+        onAgendada={cargarPaciente}
       />
     </div>
   );

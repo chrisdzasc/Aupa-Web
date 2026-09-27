@@ -85,6 +85,12 @@ export interface PacienteDetalle {
   alertas: AlertaMedica[];
   antecedentesFamiliares: AntecedenteFamiliar[];
   mediciones: MedicionAPI[];
+  proximaCita: {
+    id: number;
+    fecha: string;
+    hora: string;
+    notas: string | null;
+  } | null;
 }
 
 export const obtenerPaciente = async (
