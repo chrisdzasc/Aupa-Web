@@ -21,6 +21,7 @@ import {
   EstadoCita,
 } from "../services/cita.service";
 import { obtenerIniciales } from "../utils/fechas";
+import ModalAgregarConsulta from "../components/ModalAgregarConsulta";
 import ModalConfirmar from "../components/ModalConfirmar";
 
 const MESES = [
@@ -97,6 +98,8 @@ function Dashboard() {
   const [citaACancelar, setCitaACancelar] = useState<Cita | null>(null);
   const [cancelando, setCancelando] = useState(false);
   const [errorCancelar, setErrorCancelar] = useState("");
+
+  const [citaAReagendar, setCitaAReagendar] = useState<Cita | null>(null);
 
   const saludo = () => {
     const hora = new Date().getHours();
@@ -587,6 +590,19 @@ function Dashboard() {
                             <button
                               onClick={() => {
                                 setMenuAbierto(null);
+                                setCitaAReagendar(cita);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                            >
+                              <Calendar size={15} className="text-slate-500" />
+                              Reagendar
+                            </button>
+                          )}
+
+                          {cita.estado === "PENDIENTE" && (
+                            <button
+                              onClick={() => {
+                                setMenuAbierto(null);
                                 setErrorCancelar("");
                                 setCitaACancelar(cita);
                               }}
@@ -610,6 +626,19 @@ function Dashboard() {
             );
           })}
       </div>
+
+      {citaAReagendar && (
+        <ModalAgregarConsulta
+          isOpen={true}
+          onClose={() => setCitaAReagendar(null)}
+          pacienteId={citaAReagendar.pacienteId}
+          pacienteNombre={citaAReagendar.paciente?.nombre ?? ""}
+          numeroExpediente={citaAReagendar.paciente?.numeroExpediente ?? ""}
+          sexo={citaAReagendar.paciente?.sexo ?? "M"}
+          cita={citaAReagendar}
+          onAgendada={cargarAgenda}
+        />
+      )}
 
       <ModalConfirmar
         isOpen={citaACancelar !== null}

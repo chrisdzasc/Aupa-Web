@@ -1,7 +1,12 @@
 import { useState, useEffect } from "react";
 import { X, ChevronLeft, ChevronRight, Calendar, Check } from "lucide-react";
 import toast from "react-hot-toast";
-import { crearCita, listarCitas } from "../services/cita.service";
+import {
+  crearCita,
+  listarCitas,
+  editarCita,
+  Cita,
+} from "../services/cita.service";
 import { obtenerIniciales } from "../utils/fechas";
 
 interface Props {
@@ -12,6 +17,7 @@ interface Props {
   numeroExpediente: string;
   sexo: "M" | "F";
   onAgendada?: () => void;
+  cita?: Cita;
 }
 
 const MESES = [
@@ -60,6 +66,11 @@ const aFechaISO = (fecha: Date): string =>
     fecha.getDate(),
   ).padStart(2, "0")}`;
 
+const aFecha = (iso: string): Date => {
+  const [anio, mes, dia] = iso.split("-").map(Number);
+  return new Date(anio, mes - 1, dia);
+};
+
 const mismoDia = (a: Date, b: Date): boolean =>
   a.getFullYear() === b.getFullYear() &&
   a.getMonth() === b.getMonth() &&
@@ -73,6 +84,7 @@ function ModalAgregarConsulta({
   numeroExpediente,
   sexo,
   onAgendada,
+  cita,
 }: Props) {
   const hoy = new Date();
 
@@ -88,19 +100,29 @@ function ModalAgregarConsulta({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
 
-  // Al abrir se limpia todo, para no arrastrar la cita anterior
+  // Al abrir se precarga la cita que se reagenda, o se limpia todo para no arrastrar la anterior
   useEffect(() => {
     if (isOpen) {
-      setMesVisible(new Date(hoy.getFullYear(), hoy.getMonth(), 1));
-      setFecha(null);
-      setHora("");
-      setNotas("");
+      const inicial = cita ? aFecha(cita.fecha) : null;
+
+      setMesVisible(
+        new Date(
+          (inicial ?? hoy).getFullYear(),
+          (inicial ?? hoy).getMonth(),
+          1,
+        ),
+      );
+      setFecha(inicial);
+      setHora(cita?.hora ?? "");
+      setNotas(cita?.notas ?? "");
       setOcupados([]);
       setError("");
       setGuardando(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen]);
+
+  const idCitaEditada = cita?.id;
 
   // Al elegir una fecha se consultan las citas de ese día
   useEffect(() => {
@@ -111,12 +133,14 @@ function ModalAgregarConsulta({
 
     const cargar = async () => {
       setCargandoHorarios(true);
-      setHora("");
 
       try {
         const dia = aFechaISO(fecha);
         const citas = await listarCitas(dia, dia);
-        setOcupados(citas.map((c) => c.hora));
+        // La cita que se reagenda no se ocupa a sí misma
+        setOcupados(
+          citas.filter((c) => c.id !== idCitaEditada).map((c) => c.hora),
+        );
       } catch {
         // Si falla, se muestran todos; el backend rechaza el duplicado
         setOcupados([]);
@@ -126,7 +150,12 @@ function ModalAgregarConsulta({
     };
 
     cargar();
-  }, [fecha]);
+  }, [fecha, idCitaEditada]);
+
+  // El error deja de aplicar en cuanto el usuario cambia fecha u hora
+  useEffect(() => {
+    setError("");
+  }, [fecha, hora]);
 
   if (!isOpen) return null;
 
@@ -155,26 +184,41 @@ function ModalAgregarConsulta({
   const noDisponible = (horario: string) =>
     ocupados.includes(horario) || yaPaso(horario);
 
-  const handleAgendar = async () => {
+  const handleGuardar = async () => {
     if (!fecha || !hora) return;
 
     setGuardando(true);
     setError("");
 
     try {
-      await crearCita({
-        pacienteId,
-        fecha: aFechaISO(fecha),
-        hora,
-        notas: notas.trim() || undefined,
-      });
+      if (cita) {
+        /* Las notas se envían siempre, aunque estén vacías: así el
+           nutriólogo también puede borrarlas al reagendar */
+        await editarCita(cita.id, {
+          fecha: aFechaISO(fecha),
+          hora,
+          notas: notas.trim(),
+        });
+        toast.success("Consulta reagendada correctamente");
+      } else {
+        await crearCita({
+          pacienteId,
+          fecha: aFechaISO(fecha),
+          hora,
+          notas: notas.trim() || undefined,
+        });
+        toast.success("Consulta agendada correctamente");
+      }
 
-      toast.success("Consulta agendada correctamente");
       onAgendada?.();
       onClose();
     } catch (err) {
       const mensaje =
-        err instanceof Error ? err.message : "Error al agendar la consulta";
+        err instanceof Error
+          ? err.message
+          : cita
+            ? "Error al reagendar la consulta"
+            : "Error al agendar la consulta";
       setError(mensaje);
     } finally {
       setGuardando(false);
@@ -195,10 +239,12 @@ function ModalAgregarConsulta({
         <div className="px-6 py-4 border-b border-gray-100 flex items-start justify-between">
           <div>
             <h3 className="text-lg font-bold text-gray-900">
-              Agendar consulta
+              {cita ? "Reagendar consulta" : "Agendar consulta"}
             </h3>
             <p className="text-sm text-gray-500 mt-0.5">
-              Selecciona el día y la hora de la próxima consulta
+              {cita
+                ? "Elige el nuevo día y hora de la consulta"
+                : "Selecciona el día y la hora de la próxima consulta"}
             </p>
           </div>
           <button
@@ -288,7 +334,12 @@ function ModalAgregarConsulta({
                     <button
                       key={i}
                       disabled={pasado}
-                      onClick={() => setFecha(dia)}
+                      onClick={() => {
+                        if (!fecha || !mismoDia(dia, fecha)) {
+                          setFecha(dia);
+                          setHora("");
+                        }
+                      }}
                       className={`py-1.5 text-xs rounded-lg transition-colors ${
                         pasado
                           ? "text-gray-300 cursor-not-allowed"
@@ -446,7 +497,8 @@ function ModalAgregarConsulta({
             {fecha && hora && (
               <div className="mt-3 p-2.5 rounded-lg bg-teal-50 border border-teal-200 text-xs text-teal-800 font-medium flex items-center gap-2">
                 <Check size={16} className="text-teal-600 shrink-0" />
-                Consulta: {NOMBRES_DIA[fecha.getDay()]} {fecha.getDate()} de{" "}
+                {cita ? "Nueva fecha:" : "Consulta:"}{" "}
+                {NOMBRES_DIA[fecha.getDay()]} {fecha.getDate()} de{" "}
                 {MESES[fecha.getMonth()]}, {hora}
               </div>
             )}
@@ -466,11 +518,17 @@ function ModalAgregarConsulta({
                 Cancelar
               </button>
               <button
-                onClick={handleAgendar}
+                onClick={handleGuardar}
                 disabled={!fecha || !hora || guardando}
                 className="px-4 py-2 text-sm font-medium text-white bg-teal-600 rounded-lg hover:bg-teal-700 disabled:bg-teal-300 disabled:cursor-not-allowed transition-all"
               >
-                {guardando ? "Agendando..." : "Agendar consulta"}
+                {guardando
+                  ? cita
+                    ? "Guardando..."
+                    : "Agendando..."
+                  : cita
+                    ? "Guardar cambios"
+                    : "Agendar consulta"}
               </button>
             </div>
           </div>
