@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   MoreVertical,
   XCircle,
+  UserX,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { obtenerProfesionista } from "../services/auth.service";
@@ -17,6 +18,7 @@ import {
   obtenerResumen,
   cambiarEstadoCita,
   Cita,
+  EstadoCita,
 } from "../services/cita.service";
 import { obtenerIniciales } from "../utils/fechas";
 import ModalConfirmar from "../components/ModalConfirmar";
@@ -206,6 +208,25 @@ function Dashboard() {
     }
   };
 
+  // Registrar asistencia no necesita confirmación: es reversible en ambos sentidos, a diferencia de cancelar.
+  const registrarAsistencia = async (cita: Cita, estado: EstadoCita) => {
+    setMenuAbierto(null);
+
+    try {
+      await cambiarEstadoCita(cita.id, estado);
+      toast.success(
+        estado === "COMPLETADA"
+          ? "Cita marcada como atendida"
+          : "Cita marcada como inasistencia",
+      );
+      cargarAgenda();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "No se pudo actualizar la cita",
+      );
+    }
+  };
+
   // Una cita ya pasó si su hora quedó atrás en el día de hoy,
   // o si el día completo ya pasó
   const yaPaso = (cita: Cita): boolean => {
@@ -216,6 +237,7 @@ function Dashboard() {
   };
 
   const esHoy = mismoDia(fecha, hoy);
+  const esFuturo = aFechaISO(fecha) > aFechaISO(hoy);
 
   // Datos del calendario
   const anio = mesVisible.getFullYear();
@@ -381,15 +403,15 @@ function Dashboard() {
       </div>
 
       {/* Agenda del día */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden animate-entrance delay-4">
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm animate-entrance delay-4">
         {!cargando && citas.length > 0 && (
           <div className="px-5 py-3.5 border-b border-slate-100 flex items-center gap-3">
             <h2 className="text-sm font-bold text-slate-800">
               Agenda de pacientes
             </h2>
             <span className="hidden sm:inline text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-50 text-slate-600 border border-slate-200">
-              {citas.length}{" "}
-              {citas.length === 1 ? "cita programada" : "citas programadas"}
+              {citas.length} {citas.length === 1 ? "cita" : "citas"} en la
+              agenda
             </span>
           </div>
         )}
@@ -429,15 +451,19 @@ function Dashboard() {
         {!cargando &&
           citas.map((cita, indice) => {
             const completada = cita.estado === "COMPLETADA";
+            const inasistencia = cita.estado === "NO_ASISTIO";
+            const resuelta = completada || inasistencia;
             const pasada = yaPaso(cita);
             const esFemenino = cita.paciente?.sexo === "F";
+            // Una pendiente siempre se puede cancelar
+            const tieneAcciones = cita.estado === "PENDIENTE" || !esFuturo;
 
             return (
               <div
                 key={cita.id}
                 onClick={() => navigate(`/pacientes/${cita.pacienteId}`)}
-                className={`group px-4 sm:px-5 py-3.5 border-b border-slate-50 last:border-0 flex items-center gap-3 sm:gap-4 cursor-pointer transition-colors ${
-                  completada ? "opacity-60" : "hover:bg-slate-50"
+                className={`group px-4 sm:px-5 py-3.5 border-b border-slate-50 last:border-0 last:rounded-b-xl flex items-center gap-3 sm:gap-4 cursor-pointer transition-colors ${
+                  resuelta ? "" : "hover:bg-slate-50"
                 }`}
               >
                 {/* Hora */}
@@ -447,6 +473,8 @@ function Dashboard() {
                       size={15}
                       className="text-teal-600 shrink-0"
                     />
+                  ) : inasistencia ? (
+                    <UserX size={15} className="text-amber-600 shrink-0" />
                   ) : (
                     <span
                       className={`w-2 h-2 rounded-full shrink-0 ${
@@ -455,7 +483,7 @@ function Dashboard() {
                     ></span>
                   )}
                   <span
-                    className={completada ? "text-slate-400" : "text-slate-700"}
+                    className={resuelta ? "text-slate-400" : "text-slate-700"}
                   >
                     {cita.hora}
                   </span>
@@ -467,7 +495,7 @@ function Dashboard() {
                     esFemenino
                       ? "bg-pink-50 text-pink-600 border border-pink-100"
                       : "bg-teal-50 text-teal-700 border border-teal-100"
-                  }`}
+                  } ${resuelta ? "opacity-60" : ""}`}
                 >
                   {obtenerIniciales(cita.paciente?.nombre ?? "")}
                 </div>
@@ -479,7 +507,9 @@ function Dashboard() {
                       className={`text-sm font-medium ${
                         completada
                           ? "text-slate-400 line-through"
-                          : "text-slate-800"
+                          : inasistencia
+                            ? "text-slate-400"
+                            : "text-slate-800"
                       }`}
                     >
                       {cita.paciente?.nombre}
@@ -489,14 +519,18 @@ function Dashboard() {
                     </span>
                   </div>
                   {cita.notas && (
-                    <p className="text-xs text-slate-500 truncate">
+                    <p
+                      className={`text-xs truncate ${
+                        resuelta ? "text-slate-400" : "text-slate-500"
+                      }`}
+                    >
                       {cita.notas}
                     </p>
                   )}
                 </div>
                 {/* Acciones */}
                 <div className="flex items-center gap-1 shrink-0">
-                  {!completada && (
+                  {tieneAcciones && (
                     <div className="relative">
                       <button
                         onClick={(e) => {
@@ -505,7 +539,7 @@ function Dashboard() {
                             menuAbierto === cita.id ? null : cita.id,
                           );
                         }}
-                        className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 opacity-0 group-hover:opacity-100 transition-all"
+                        className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 [@media(hover:hover)]:opacity-0 [@media(hover:hover)]:group-hover:opacity-100 transition-all"
                         aria-label="Acciones"
                       >
                         <MoreVertical size={16} />
@@ -514,21 +548,54 @@ function Dashboard() {
                       {menuAbierto === cita.id && (
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className={`absolute right-0 z-30 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-[170px] ${
-                            indice === citas.length - 1 ? "bottom-8" : "top-8"
+                          className={`absolute right-0 z-30 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-[195px] ${
+                            indice === citas.length - 1 && citas.length > 2
+                              ? "bottom-8"
+                              : "top-8"
                           }`}
                         >
-                          <button
-                            onClick={() => {
-                              setMenuAbierto(null);
-                              setErrorCancelar("");
-                              setCitaACancelar(cita);
-                            }}
-                            className="w-full text-left px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
-                          >
-                            <XCircle size={15} />
-                            Cancelar cita
-                          </button>
+                          {!esFuturo && !completada && (
+                            <button
+                              onClick={() =>
+                                registrarAsistencia(cita, "COMPLETADA")
+                              }
+                              className="w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                            >
+                              <CheckCircle2
+                                size={15}
+                                className="text-teal-600"
+                              />
+                              Marcar como atendida
+                            </button>
+                          )}
+
+                          {!esFuturo && !inasistencia && (
+                            <button
+                              onClick={() =>
+                                registrarAsistencia(cita, "NO_ASISTIO")
+                              }
+                              className="w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                            >
+                              <UserX size={15} className="text-amber-600" />
+                              {completada
+                                ? "Marcar como inasistencia"
+                                : "No asistió"}
+                            </button>
+                          )}
+
+                          {cita.estado === "PENDIENTE" && (
+                            <button
+                              onClick={() => {
+                                setMenuAbierto(null);
+                                setErrorCancelar("");
+                                setCitaACancelar(cita);
+                              }}
+                              className="w-full text-left px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                            >
+                              <XCircle size={15} />
+                              Cancelar cita
+                            </button>
+                          )}
                         </div>
                       )}
                     </div>

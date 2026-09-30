@@ -1,6 +1,10 @@
 import { peticion } from "./api";
 
-export type EstadoCita = "PENDIENTE" | "EN_CURSO" | "COMPLETADA" | "CANCELADA";
+export type EstadoCita =
+  | "PENDIENTE"
+  | "COMPLETADA"
+  | "NO_ASISTIO"
+  | "CANCELADA";
 
 export interface Cita {
   id: number;
