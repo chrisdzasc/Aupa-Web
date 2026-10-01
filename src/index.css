@@ -104,3 +104,32 @@
     opacity 0.25s ease,
     stroke-width 0.2s ease;
 }
+
+/* Punto de la cita pendiente en el historial de citas */
+@keyframes pulseGlowBlue {
+    0%, 100% { box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.45); }
+    50%      { box-shadow: 0 0 0 7px rgba(59, 130, 246, 0); }
+}
+
+.pulse-pending-node {
+    animation: pulseGlowBlue 2.2s infinite ease-in-out;
+}
+
+/* Menús desplegables de acciones */
+@keyframes dropdownIn {
+    0%   { opacity: 0; transform: scale(0.96) translateY(-4px); }
+    100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+.animate-dropdown {
+    animation: dropdownIn 0.15s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .pulse-pending-node,
+    .animate-dropdown {
+        animation: none !important;
+        opacity: 1 !important;
+        transform: none !important;
+    }
+}

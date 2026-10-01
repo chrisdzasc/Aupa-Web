@@ -25,6 +25,7 @@ import {
   formatearTelefono,
 } from "../utils/fechas";
 import TabGraficas from "../components/TabGraficas";
+import TabCitas from "../components/TabCitas";
 import { IndicadorCurva } from "../services/curvas.service";
 
 const PARENTESCO_LEGIBLE: Record<string, string> = {
@@ -168,7 +169,7 @@ function DetallePaciente() {
 
   const dosDatos = casoAlim === 2 || casoAlim === 3;
 
-  const tabs = ["Mediciones", "Graficas", "Alimentacion"];
+  const tabs = ["Mediciones", "Graficas", "Alimentacion", "Citas"];
 
   const sexoTexto = paciente.sexo === "F" ? "Femenino" : "Masculino";
   const tieneAlertas =
@@ -456,13 +457,6 @@ function DetallePaciente() {
               </h2>
             </div>
             <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => setModalAbierto(true)}
-                className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 hover:bg-gray-50 hover:border-gray-300 rounded-lg shadow-sm transition-all"
-              >
-                <Calendar size={16} className="text-gray-500" />
-                Agendar consulta
-              </button>
               <Link
                 to={`/pacientes/${id}/nueva-medicion`}
                 className="inline-flex items-center justify-center gap-1.5 px-3.5 py-2 text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 rounded-lg shadow-sm transition-all"
@@ -620,6 +614,16 @@ function DetallePaciente() {
             El plan de alimentación y checklist se implementarán aquí.
           </p>
         </div>
+      )}
+
+      {tabActiva === "Citas" && (
+        <TabCitas
+          pacienteId={paciente.id}
+          pacienteNombre={paciente.nombre}
+          numeroExpediente={paciente.numeroExpediente}
+          sexo={paciente.sexo}
+          onCambio={cargarPaciente}
+        />
       )}
 
       <ModalAgregarConsulta
