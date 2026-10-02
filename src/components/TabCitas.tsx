@@ -6,6 +6,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Loader2,
+  CheckCircle2,
+  UserX,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import {
@@ -55,6 +57,13 @@ const ESTILOS: Record<
     punto: "bg-slate-300 ring-slate-100",
     atenuado: true,
   },
+};
+
+const hoyISO = (): string => {
+  const hoy = new Date();
+  return `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, "0")}-${String(
+    hoy.getDate(),
+  ).padStart(2, "0")}`;
 };
 
 const POR_PAGINA = 5;
@@ -124,6 +133,25 @@ function TabCitas({
       );
     } finally {
       setCancelando(false);
+    }
+  };
+
+  // Registrar asistencia no necesita confirmación: es reversible en ambos sentidos, a diferencia de cancelar.
+  const registrarAsistencia = async (cita: Cita, estado: EstadoCita) => {
+    setMenuAbierto(null);
+
+    try {
+      await cambiarEstadoCita(cita.id, estado);
+      toast.success(
+        estado === "COMPLETADA"
+          ? "Cita marcada como atendida"
+          : "Cita marcada como inasistencia",
+      );
+      refrescar();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "No se pudo actualizar la cita",
+      );
     }
   };
 
@@ -220,6 +248,10 @@ function TabCitas({
           {visibles.map((cita, indice) => {
             const estilo = ESTILOS[cita.estado];
             const pendiente = cita.estado === "PENDIENTE";
+            const cancelada = cita.estado === "CANCELADA";
+            // La asistencia solo se registra a partir del día de la cita
+            const puedeRegistrar = !cancelada && cita.fecha <= hoyISO();
+            const tieneAcciones = pendiente || puedeRegistrar;
 
             return (
               <div
@@ -270,7 +302,7 @@ function TabCitas({
                     )}
                   </div>
 
-                  {pendiente && (
+                  {tieneAcciones && (
                     <div className="relative shrink-0">
                       <button
                         onClick={(e) => {
@@ -288,34 +320,70 @@ function TabCitas({
                       {menuAbierto === cita.id && (
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className={`absolute right-0 z-30 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-[170px] animate-dropdown ${
+                          className={`absolute right-0 z-30 bg-white border border-gray-200 rounded-lg shadow-lg p-1 min-w-[195px] animate-dropdown ${
                             indice === visibles.length - 1 &&
                             visibles.length > 2
                               ? "bottom-8 origin-bottom-right"
                               : "top-8 origin-top-right"
                           }`}
                         >
-                          <button
-                            onClick={() => {
-                              setMenuAbierto(null);
-                              setCitaAReagendar(cita);
-                            }}
-                            className="w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
-                          >
-                            <Calendar size={15} className="text-slate-500" />
-                            Reagendar
-                          </button>
-                          <button
-                            onClick={() => {
-                              setMenuAbierto(null);
-                              setErrorCancelar("");
-                              setCitaACancelar(cita);
-                            }}
-                            className="w-full text-left px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
-                          >
-                            <XCircle size={15} />
-                            Cancelar cita
-                          </button>
+                          {puedeRegistrar && cita.estado !== "COMPLETADA" && (
+                            <button
+                              onClick={() =>
+                                registrarAsistencia(cita, "COMPLETADA")
+                              }
+                              className="w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                            >
+                              <CheckCircle2
+                                size={15}
+                                className="text-teal-600"
+                              />
+                              Marcar como atendida
+                            </button>
+                          )}
+
+                          {puedeRegistrar && cita.estado !== "NO_ASISTIO" && (
+                            <button
+                              onClick={() =>
+                                registrarAsistencia(cita, "NO_ASISTIO")
+                              }
+                              className="w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                            >
+                              <UserX size={15} className="text-amber-600" />
+                              {cita.estado === "COMPLETADA"
+                                ? "Marcar como inasistencia"
+                                : "No asistió"}
+                            </button>
+                          )}
+
+                          {pendiente && (
+                            <>
+                              <button
+                                onClick={() => {
+                                  setMenuAbierto(null);
+                                  setCitaAReagendar(cita);
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
+                              >
+                                <Calendar
+                                  size={15}
+                                  className="text-slate-500"
+                                />
+                                Reagendar
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setMenuAbierto(null);
+                                  setErrorCancelar("");
+                                  setCitaACancelar(cita);
+                                }}
+                                className="w-full text-left px-3 py-2 rounded-md text-sm text-red-600 hover:bg-red-50 flex items-center gap-2 transition-colors"
+                              >
+                                <XCircle size={15} />
+                                Cancelar cita
+                              </button>
+                            </>
+                          )}
                         </div>
                       )}
                     </div>
